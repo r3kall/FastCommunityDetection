@@ -23,7 +23,7 @@ def sparse_adjacency_matrix(filename):
     :param filename: path of the input raw file.
     :return: a dictionary with integer keys and lists of integer as values.
     """
-    # TODO open as gzip file and generalize for other inputs
+
     output_dict = {}
     if os.path.isfile(definitions.UNDIRECTED_SPARSE_GRAPH_FILE):
         # loads the JSON file
@@ -36,7 +36,7 @@ def sparse_adjacency_matrix(filename):
                      'procede to make a new one')
         logcount = 1
         st = time.time()
-        with open(filename, 'r') as f:
+        with gzip.open(filename, 'rt') as f:
             for line in f:
                 if logcount % 1000000 == 0:
                     logging.info('up to line %d', logcount)
@@ -56,7 +56,7 @@ def sparse_adjacency_matrix(filename):
                 logcount += 1
 
         ft = time.time() - st
-        logging.info('time to get the output: %f seconds', ft)
+        logging.info('time to get the output: %d mins', ft//60)
 
         # stores the graph as a JSON file
         with open(definitions.UNDIRECTED_SPARSE_GRAPH_FILE, 'w') as f:

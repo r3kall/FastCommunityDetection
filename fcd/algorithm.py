@@ -2,7 +2,9 @@
 algorithm.py
 """
 
+import time
 import heapq
+import logging
 
 
 def init_deltaQ(ki, kj, m):
@@ -29,33 +31,40 @@ def init_Qtrees(graph_dict, m):
     for i in graph_dict:
         cm = graph_dict[i]
         ki = len(cm)
-        Qtrees[int(i)] = {}
+        Qtrees[i] = {}
         for j in cm:
-            kj = len(graph_dict[str(j)])
-            Qtrees[int(i)][int(j)] = init_deltaQ(ki, kj, m)
-
+            kj = len(graph_dict[j])
+            Qtrees[i][j] = init_deltaQ(ki, kj, m)
     return Qtrees
 
 
 def init_H(Qtrees):
     """
     Initialize a max-heap H containing the largest element of each row of the
-    matrix deltaQ along with the labels i,j of the corresponding pair of communities.
+    matrix deltaQ along with the labels i,j of the corresponding
+    pair of communities.
 
     :param Qtrees: sparse matrix deltaQ
     :return: max-heap H
     """
     H = []
+    tot = 0.0
     for i in Qtrees:
         maximum = 0.0
         jindex = 0
+
+        st0 = time.time()
+
         for j in Qtrees[i]:
             if Qtrees[i][j] > maximum:
                 maximum = Qtrees[i][j]
                 jindex = j
+
+        tot += (time.time() - st0)
         # we have to store the elements in the heap as their negative value,
         # because python heap is a min-heap
         heapq.heappush(H, (-maximum, i, jindex))
+    logging.debug('time to compute inner cycles of H:  %f' % tot)
     return H
 
 
@@ -70,7 +79,7 @@ def init_a(graph_dict, m):
     a = {}
     for i in graph_dict:
         k = len(graph_dict[i])
-        a[int(i)] = float(k) / (2.0 * m)
+        a[i] = float(k) / (2.0 * m)
     return a
 
 
