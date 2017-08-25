@@ -6,8 +6,8 @@ Processing of the input raw data to data structures.
 
 import os
 import gzip
-import json
 import time
+import pickle
 import logging
 from collections import defaultdict
 
@@ -17,8 +17,8 @@ import definitions
 def sparse_adjacency_matrix(filename):
     """
     From an input file of the type "u v" per row, where u and v are different
-    nodes. After completion saves the dictionary in JSON format, if called a
-    second time, if the JSON exists, it loads him.
+    nodes. After completion saves the dictionary in pickle format, if called a
+    second time, if the pickle file exists, it loads him.
 
     :param filename: path of the input raw file.
     :return: a dictionary with integer keys and lists of integer as values.
@@ -26,14 +26,14 @@ def sparse_adjacency_matrix(filename):
 
     output_dict = {}
     if os.path.isfile(definitions.UNDIRECTED_SPARSE_GRAPH_FILE):
-        # loads the JSON file
-        with open(definitions.UNDIRECTED_SPARSE_GRAPH_FILE, 'r') as f:
-            output_dict = json.load(f)
-            logging.info('Undirected-sparse graph JSON file found and loaded')
+        # loads the pickle file
+        with open(definitions.UNDIRECTED_SPARSE_GRAPH_FILE, 'rb') as f:
+            output_dict = pickle.load(f)
+            logging.info('Undirected-sparse graph pickle file found and loaded\n')
     else:
         # creates the undirected sparse graph
-        logging.info('Undirected-sparse graph JSON file not found, '
-                     'procede to make a new one')
+        logging.info('Undirected-sparse graph pickle file not found, '
+                     'procede to make a new one\n')
         logcount = 1
         st = time.time()
         with gzip.open(filename, 'rt') as f:
@@ -58,9 +58,9 @@ def sparse_adjacency_matrix(filename):
         ft = time.time() - st
         logging.info('time to get the output: %d mins', ft//60)
 
-        # stores the graph as a JSON file
-        with open(definitions.UNDIRECTED_SPARSE_GRAPH_FILE, 'w') as f:
-            json.dump(output_dict, f)
+        # stores the graph as a pickle file
+        with open(definitions.UNDIRECTED_SPARSE_GRAPH_FILE, 'wb') as f:
+            pickle.dump(output_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     return output_dict
 

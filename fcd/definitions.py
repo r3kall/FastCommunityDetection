@@ -11,4 +11,4 @@ FILE_DIR = os.path.join(ROOT_DIR, 'files')  # This is the directory of stored fi
 
 # Files
 RAW_DATA_GRAPH_FILE = os.path.join(FILE_DIR, 'wiki-topcats.txt.gz')
-UNDIRECTED_SPARSE_GRAPH_FILE = os.path.join(FILE_DIR, 'undirected_sparse_graph.json')
+UNDIRECTED_SPARSE_GRAPH_FILE = os.path.join(FILE_DIR, 'undirected_sparse_graph.pickle')

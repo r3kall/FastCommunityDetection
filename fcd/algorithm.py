@@ -7,7 +7,7 @@ import heapq
 import logging
 
 
-def init_deltaQ(ki, kj, m):
+def compute_deltaQ(ki, kj, m):
     """
     Initialize deltaQ for two communities i and j.
 
@@ -16,10 +16,10 @@ def init_deltaQ(ki, kj, m):
     :param kj: node j.
     :return: the starting value of deltaQ for 'single' communities i and j.
     """
-    return (1.0 / (2.0 * m)) - (float(ki * kj) / ((2 * m) ** 2))
+    return (1. / (2. * m)) - (float(ki * kj) / ((2 * m) ** 2))
 
 
-def init_Qtrees(graph_dict, m):
+def compute_Qtrees(graph_dict, m):
     """
     Initialize the deltaQ sparse matrix.
 
@@ -34,41 +34,34 @@ def init_Qtrees(graph_dict, m):
         Qtrees[i] = {}
         for j in cm:
             kj = len(graph_dict[j])
-            Qtrees[i][j] = init_deltaQ(ki, kj, m)
+            Qtrees[i][j] = compute_deltaQ(ki, kj, m)
+
     return Qtrees
 
 
-def init_H(Qtrees):
+def compute_H(Qtrees):
     """
     Initialize a max-heap H containing the largest element of each row of the
     matrix deltaQ along with the labels i,j of the corresponding
     pair of communities.
 
-    :param Qtrees: sparse matrix deltaQ
-    :return: max-heap H
+    :param Qtrees: sparse matrix deltaQ.
+    :return: max-heap H.
     """
     H = []
-    tot = 0.0
     for i in Qtrees:
-        maximum = 0.0
-        jindex = 0
-
-        st0 = time.time()
-
+        maximum = 0.
+        index = 0
         for j in Qtrees[i]:
             if Qtrees[i][j] > maximum:
                 maximum = Qtrees[i][j]
-                jindex = j
+                index = j
+        heapq.heappush(H, (-maximum, i, index))
 
-        tot += (time.time() - st0)
-        # we have to store the elements in the heap as their negative value,
-        # because python heap is a min-heap
-        heapq.heappush(H, (-maximum, i, jindex))
-    logging.debug('time to compute inner cycles of H:  %f' % tot)
     return H
 
 
-def init_a(graph_dict, m):
+def compute_a(graph_dict, m):
     """
     Initialize an ordinary dictionary with elements ai.
 
@@ -79,7 +72,7 @@ def init_a(graph_dict, m):
     a = {}
     for i in graph_dict:
         k = len(graph_dict[i])
-        a[i] = float(k) / (2.0 * m)
+        a[i] = float(k) / (2. * m)
     return a
 
 
@@ -99,30 +92,26 @@ def update_Qtrees(Qtrees, i, j, a):
     :return: updated Qtrees.
     """
 
-    # equation (10a)
-    for k in Qtrees[i]:
-        if k in Qtrees[j]:
-            Qtrees[j][k] = Qtrees[i][k] + Qtrees[j][k]
-
-    # equation (10b) and (10c)
     for k in Qtrees:
-        if k in Qtrees[i] and k not in Qtrees[j]:
-            Qtrees[j][k] = Qtrees[i][k] - (2 * a[j] * a[k])
-        elif k in Qtrees[j] and k not in Qtrees[i]:
-            Qtrees[j][k] = Qtrees[j][k] - (2 * a[i] * a[k])
-
-    # remove i key and update j for each row k
-    for k in Qtrees:
+        if k in Qtrees[i]:
+            if k in Qtrees[j]:
+                # equation (10a)
+                Qtrees[j][k] = Qtrees[i][k] + Qtrees[j][k]
+            else:
+                # equation (10b)
+                Qtrees[j][k] = Qtrees[i][k] - (2 * a[j] * a[k])
+        elif k in Qtrees[j]:
+            # equation (10c)
+            Qtrees[j][k] -= (2 * a[i] * a[k])
+        # remove i-th column
         if i in Qtrees[k]:
-            # remove the i-th column
             Qtrees[k].pop(i, None)
-        if j in Qtrees[k]:
-            # update j-th column
-            Qtrees[k][j] = Qtrees[k][j] - (2 * a[i] * a[k])
 
+    """
     # remove the self-reference
     if j in Qtrees[j]:
         Qtrees[j].pop(j, None)
+    """
 
     # remove the i-th row
     Qtrees.pop(i, None)
@@ -130,8 +119,21 @@ def update_Qtrees(Qtrees, i, j, a):
     return Qtrees
 
 
+def update_H(Qtrees, H, j):
+    """ Update the heap H. """
+    maximum = 0.
+    index = 0
+    for item in Qtrees[j]:
+        if Qtrees[j][item] > maximum:
+            maximum = Qtrees[j][item]
+            index = item
+    heapq.heappush(H, (-maximum, j, index))
+
+    return H
+
+
 def update_a(i, j, a):
-    """ Update array of elements a """
+    """ Update array of elements a. """
     a[j] += a[i]
     a[i] = 0
     return a
