@@ -2,9 +2,7 @@
 algorithm.py
 """
 
-import time
 import heapq
-import logging
 
 
 def compute_deltaQ(ki, kj, m):
@@ -27,15 +25,10 @@ def compute_Qtrees(graph_dict, m):
     :param m: number of edges.
     :return: deltaQ sparse matrix as a dictionary
     """
-    Qtrees = {}
+    Qtrees = dict()
     for i in graph_dict:
-        cm = graph_dict[i]
-        ki = len(cm)
-        Qtrees[i] = {}
-        for j in cm:
-            kj = len(graph_dict[j])
-            Qtrees[i][j] = compute_deltaQ(ki, kj, m)
-
+        Qtrees[i] = {j: compute_deltaQ(
+            len(graph_dict[i]), len(graph_dict[j]), m) for j in graph_dict[i]}
     return Qtrees
 
 
@@ -92,6 +85,24 @@ def update_Qtrees(Qtrees, i, j, a):
     :return: updated Qtrees.
     """
 
+    for k in Qtrees[i]:
+        if k in Qtrees[j]:
+            # equation (10a)
+            Qtrees[j][k] += Qtrees[i][k]
+        else:
+            # equation (10b)
+            Qtrees[j][k] = Qtrees[i][k] - (2 * a[j] * a[k])
+
+        """TODO
+        update k-th row by removing the i-th element.
+        """
+
+    for k in Qtrees[j]:
+        if k not in Qtrees[i]:
+            # equation (10c)
+            Qtrees[j][k] -= (2 * a[i] * a[k])
+
+    """
     for k in Qtrees:
         if k in Qtrees[i]:
             if k in Qtrees[j]:
@@ -106,12 +117,16 @@ def update_Qtrees(Qtrees, i, j, a):
         # remove i-th column
         if i in Qtrees[k]:
             Qtrees[k].pop(i, None)
+    """
 
     """
     # remove the self-reference
     if j in Qtrees[j]:
         Qtrees[j].pop(j, None)
     """
+
+    # remove element i from the j-th row
+    Qtrees[j].pop(i, None)
 
     # remove the i-th row
     Qtrees.pop(i, None)

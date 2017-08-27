@@ -43,18 +43,18 @@ def main():
     logging.info("time to initialize H:  %f seconds" % (time.time() - st))
 
     step = 0
-    print('\n\n\ti', '\t\t', 'j', '\t\t', 'Q', '\t\t', 'deltaQ', '\t\t', 'step', '\t\t', 'time')
+    print('\n\n\ti', '\t\t', 'j', '\t\t', 'Q', '\t\t', 'deltaQ', '\t\t',
+          'step', '\t\t', 'time')
     br = 0
     while H:
-        ft = time.time()
         deltaQ, i, j = algorithm.maxQ(H)
 
         # if community i or j doesn't exists in the deltaQ matrix anymore,
         # ignore it and continue.
         if Qtrees.get(i, None) is None or Qtrees.get(j, None) is None:
             continue
-        extrat = time.time()
-        Q -= deltaQ
+
+        Q -= deltaQ  # update modularity.
 
         st = time.time()
         # update the deltaQ matrix according to equations.
@@ -69,7 +69,6 @@ def main():
         a = algorithm.update_a(i, j, a)
         threet = time.time()
 
-        logging.debug("time to check indices: %f" % (extrat - ft))
         logging.debug("time to compute Qtrees:  %f seconds" % (onet - st))
         logging.debug("time to compute H:  %f seconds" % (twot - onet))
         logging.debug("time to compute a:  %f seconds" % (threet - twot))
@@ -80,8 +79,12 @@ def main():
               round(-deltaQ, 5), '\t\t', step, '\t\t', (threet - st))
 
         br += 1
-        if br > 100:
+        if br > 25:
             break
+
+    del Qtrees
+    del H
+    del a
 
 
 if __name__ == '__main__':
