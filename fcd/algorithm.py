@@ -74,7 +74,7 @@ def maxQ(H):
     return heapq.heappop(H)
 
 
-def update_Qtrees(Qtrees, i, j, a):
+def update_Qtrees(Qtrees, H, i, j, a):
     """
     Update rules.
 
@@ -93,9 +93,10 @@ def update_Qtrees(Qtrees, i, j, a):
             # equation (10b)
             Qtrees[j][k] = Qtrees[i][k] - (2 * a[j] * a[k])
 
-        """TODO
-        update k-th row by removing the i-th element.
-        """
+        # remove element i from k-th row
+        Qtrees[k].pop(i, None)
+        # update the heap H for each key k
+        H = update_H(Qtrees, H, k)
 
     for k in Qtrees[j]:
         if k not in Qtrees[i]:
@@ -130,6 +131,8 @@ def update_Qtrees(Qtrees, i, j, a):
 
     # remove the i-th row
     Qtrees.pop(i, None)
+
+    H = update_H(Qtrees, H, j)
 
     return Qtrees
 

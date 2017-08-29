@@ -58,11 +58,11 @@ def main():
 
         st = time.time()
         # update the deltaQ matrix according to equations.
-        Qtrees = algorithm.update_Qtrees(Qtrees, i, j, a)
+        Qtrees = algorithm.update_Qtrees(Qtrees, H, i, j, a)
         onet = time.time()
 
         # update the max-heap H, adding the new maximum value in the j-th row.
-        H = algorithm.update_H(Qtrees, H, j)
+        # H = algorithm.update_H(Qtrees, H, j)
         twot = time.time()
 
         # update a.
@@ -70,7 +70,7 @@ def main():
         threet = time.time()
 
         logging.debug("time to compute Qtrees:  %f seconds" % (onet - st))
-        logging.debug("time to compute H:  %f seconds" % (twot - onet))
+        # logging.debug("time to compute H:  %f seconds" % (twot - onet))
         logging.debug("time to compute a:  %f seconds" % (threet - twot))
 
         step += 1
