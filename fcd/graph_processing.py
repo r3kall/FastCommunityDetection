@@ -40,7 +40,8 @@ def sparse_adjacency_matrix(filename):
             for line in f:
                 if logcount % 1000000 == 0:
                     logging.info('up to line %d', logcount)
-                l = line.split(' ')  # split the line at the space
+                # l = line.split(' ')  # split the line at the space
+                l = line.split('\t')  # split the line at the space
                 u = int(l[0].strip())
                 v = int(l[1].strip())
 

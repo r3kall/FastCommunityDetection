@@ -3,6 +3,7 @@ algorithm.py
 """
 
 import heapq
+import time
 
 
 def compute_deltaQ(ki, kj, m):
@@ -17,7 +18,7 @@ def compute_deltaQ(ki, kj, m):
     return (1. / (2. * m)) - (float(ki * kj) / ((2 * m) ** 2))
 
 
-def compute_Qtrees(graph_dict, m):
+def compute_Qmatrix(graph_dict, m):
     """
     Initialize the deltaQ sparse matrix.
 
@@ -25,32 +26,26 @@ def compute_Qtrees(graph_dict, m):
     :param m: number of edges.
     :return: deltaQ sparse matrix as a dictionary
     """
-    Qtrees = dict()
+    Qmatrix = dict()
     for i in graph_dict:
-        Qtrees[i] = {j: compute_deltaQ(
+        Qmatrix[i] = {j: compute_deltaQ(
             len(graph_dict[i]), len(graph_dict[j]), m) for j in graph_dict[i]}
-    return Qtrees
+    return Qmatrix
 
 
-def compute_H(Qtrees):
+def compute_H(Qmatrix):
     """
     Initialize a max-heap H containing the largest element of each row of the
     matrix deltaQ along with the labels i,j of the corresponding
     pair of communities.
 
-    :param Qtrees: sparse matrix deltaQ.
+    :param Qmatrix: sparse matrix deltaQ.
     :return: max-heap H.
     """
     H = []
-    for i in Qtrees:
-        maximum = 0.
-        index = 0
-        for j in Qtrees[i]:
-            if Qtrees[i][j] > maximum:
-                maximum = Qtrees[i][j]
-                index = j
-        heapq.heappush(H, (-maximum, i, index))
-
+    for i in Qmatrix:
+        index = max(Qmatrix[i], key=Qmatrix[i].get)
+        heapq.heappush(H, (-Qmatrix[i][index], i, index))
     return H
 
 
@@ -74,80 +69,50 @@ def maxQ(H):
     return heapq.heappop(H)
 
 
-def update_Qtrees(Qtrees, H, i, j, a):
+def update_Qmatrix(Qmatrix, H, i, j, a):
     """
     Update rules.
 
-    :param Qtrees: sparse matrix deltaQ.
+    :param Qmatrix: sparse matrix deltaQ.
     :param i: community i.
     :param j: community j.
     :param a: element a.
     :return: updated Qtrees.
     """
 
-    for k in Qtrees[i]:
-        if k in Qtrees[j]:
+    for k in Qmatrix[j]:
+        if k not in Qmatrix[i]:
+            # equation (10c)
+            Qmatrix[j][k] -= (2 * a[i] * a[k])
+
+    for k in Qmatrix[i]:
+        if k in Qmatrix[j]:
             # equation (10a)
-            Qtrees[j][k] += Qtrees[i][k]
+            Qmatrix[j][k] += Qmatrix[i][k]
         else:
             # equation (10b)
-            Qtrees[j][k] = Qtrees[i][k] - (2 * a[j] * a[k])
+            # here a new key is added to the j-th row
+            Qmatrix[j][k] = Qmatrix[i][k] - (2 * a[j] * a[k])
 
-        # remove element i from k-th row
-        Qtrees[k].pop(i, None)
-        # update the heap H for each key k
-        H = update_H(Qtrees, H, k)
+    # remove self reference
+    Qmatrix[j].pop(j, None)
 
-    for k in Qtrees[j]:
-        if k not in Qtrees[i]:
-            # equation (10c)
-            Qtrees[j][k] -= (2 * a[i] * a[k])
+    update_H(Qmatrix, H, a, j)
 
-    """
-    for k in Qtrees:
-        if k in Qtrees[i]:
-            if k in Qtrees[j]:
-                # equation (10a)
-                Qtrees[j][k] = Qtrees[i][k] + Qtrees[j][k]
-            else:
-                # equation (10b)
-                Qtrees[j][k] = Qtrees[i][k] - (2 * a[j] * a[k])
-        elif k in Qtrees[j]:
-            # equation (10c)
-            Qtrees[j][k] -= (2 * a[i] * a[k])
-        # remove i-th column
-        if i in Qtrees[k]:
-            Qtrees[k].pop(i, None)
-    """
-
-    """
-    # remove the self-reference
-    if j in Qtrees[j]:
-        Qtrees[j].pop(j, None)
-    """
-
-    # remove element i from the j-th row
-    Qtrees[j].pop(i, None)
-
-    # remove the i-th row
-    Qtrees.pop(i, None)
-
-    H = update_H(Qtrees, H, j)
-
-    return Qtrees
+    return Qmatrix
 
 
-def update_H(Qtrees, H, j):
+def update_H(Qmatrix, H, a, n):
     """ Update the heap H. """
-    maximum = 0.
     index = 0
-    for item in Qtrees[j]:
-        if Qtrees[j][item] > maximum:
-            maximum = Qtrees[j][item]
-            index = item
-    heapq.heappush(H, (-maximum, j, index))
+    maximum = 0.
+    for x in Qmatrix[n]:
+        if (Qmatrix[n][x] > maximum) and (a[x] > 0):
+            maximum = Qmatrix[n][x]
+            index = x
 
-    return H
+    if maximum > 0:
+        heapq.heappush(H, (-Qmatrix[n][index], n, index))
 
 
 def update_a(i, j, a):
