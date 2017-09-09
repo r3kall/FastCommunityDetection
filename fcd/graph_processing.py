@@ -80,3 +80,98 @@ def number_of_edges(graph_dict):
         edges += len(graph_dict[k])
     return edges / 2
 
+
+def _prune(graph, step, th=3):
+    """
+
+    :param Qmatrix:
+    :return:
+    """
+
+    edges = {k: [v for v in graph[k]] for k in graph.keys() if (len(graph[k]) < th)}
+    logging.info("Number of pruned nodes at step %d: %d" % (step, len(edges)))
+
+    for x in edges:
+        for y in edges[x]:
+            graph[y].remove(x)
+
+    for x in edges:
+        del graph[x]
+
+    return graph
+
+
+def _remove_cycles(graph):
+    """
+
+    :param Qmatrix:
+    :return:
+    """
+    cycles = 0
+    for k in graph:
+        if k in graph[k]:
+            graph[k].remove(k)
+            cycles += 1
+    logging.info('Graph cycles found: %d' % cycles)
+    return graph
+
+
+def _check(graph):
+    """
+
+    :param Qmatrix:
+    :return:
+    """
+    for i in graph:
+        if len(graph[i]) == 0:
+            logging.info('!! Delta matrix with entries of length zero')
+            return False
+        for j in graph[i]:
+            if i == j:
+                logging.info('!! Delta matrix with entries with cycles')
+                return False
+            if i not in graph[j]:
+                logging.info('!! Delta matrix with directed entries')
+                return False
+    return True
+
+
+def _check_a(a):
+    """
+
+    :param a:
+    :return:
+    """
+    for x in a:
+        if a[x] == 0:
+            raise Exception('!! Vector A not correct !!')
+
+
+def cleaning(graph):
+    """
+
+    :param graph:
+    :return:
+    """
+
+    def zero_length(g):
+        """  """
+        for x in g:
+            if len(g[x]) == 0:
+                return False
+        return True
+
+    graph = _remove_cycles(graph)
+    graph = _prune(graph, 0)
+
+    flag = zero_length(graph)
+    step = 1
+    while not flag:
+        graph = _prune(graph, step, th=1)
+        flag = zero_length(graph)
+        step += 1
+
+    if not _check(graph):
+        raise Exception('!! Graph not correct !!')
+
+    return graph
