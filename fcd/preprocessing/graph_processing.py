@@ -1,15 +1,22 @@
-"""
-graph_processing.py
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+""" graph_processing.py
 
 Processing of the input raw data to data structures.
+
+The 'sparse_adjacency_matrix' function process and store the input graph as a
+dictionary of lists, where each key is a vertex of the graph and each list is
+composed by its neighbors.
+
 """
+
 
 import os
 import gzip
 import time
 import pickle
 import logging
-from collections import defaultdict
 
 import definitions
 
@@ -21,6 +28,7 @@ def sparse_adjacency_matrix(filename):
     second time, if the pickle file exists, it loads him.
 
     :param filename: path of the input raw file.
+
     :return: a dictionary with integer keys and lists of integer as values.
     """
 
@@ -72,7 +80,8 @@ def number_of_edges(graph_dict):
     dictionary as adjacency (sparse) matrix.
 
     :param graph_dict: a dictionary, result of the 'sparse_adjacency_matrix'
-    function, representing a graph.
+                       function, representing a graph.
+
     :return: number of edges (in the undirected graph).
     """
     edges = 0

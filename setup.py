@@ -4,7 +4,8 @@ from Cython.Build import cythonize
 
 import numpy as np
 
-ext_modules=[Extension("fcd.algorithm.construction", ["fcd/algorithm/construction.pyx"]),
+ext_modules=[Extension("fcd.algorithm.construction",
+                       ["fcd/algorithm/construction.pyx"]),
              Extension("fcd.algorithm.update",
                        ["fcd/algorithm/update.pyx"],
                        extra_compile_args=["-ffast-math"])

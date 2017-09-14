@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import time
+import logging
 
 import definitions
 from algorithm.construction import compute_Qmatrix, compute_A, compute_H
@@ -25,7 +26,7 @@ def construction():
     print("    time to initialize Qmatrix:  %f seconds" % (time.time() - st))
 
     st = time.time()
-    A = compute_A(G, m)
+    # A = compute_A(G, m)
     print("    time to initialize A:  %f seconds" % (time.time() - st))
 
     del G
@@ -48,8 +49,13 @@ def update(Qmatrix, A, H):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s %(message)s',
+                        datefmt='%m/%d/%Y %H:%M:%S')
+
     print(" !== START ==!\n")
-    Qmatrix, H, A, m = construction()
+    # Qmatrix, H, A, m = construction()
+    construction()
     print()
-    update(Qmatrix, A, H)
+    # update(Qmatrix, A, H)
     print("\n !== END ==!")
