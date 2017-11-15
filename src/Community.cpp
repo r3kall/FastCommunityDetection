@@ -25,18 +25,18 @@
 
 #include "Community.h"
 
-#define TH 8192*2
-
 
 Community::Community () {
   community_id      = -1;
   community_size    = 1;
+  community_degree  = 0;
   community_max     = NULL;
 }
 
 Community::Community (int id) {
   community_id      = id;
   community_size    = 1;
+  community_degree  = 0;
   community_max     = NULL;
 }
 
@@ -48,9 +48,18 @@ Community::~Community () {
 ostream& operator << (ostream& outputStream, Community& c) {
 
   outputStream << "community: " << c.community_id;   
-  outputStream << "  \tsize: " << c.community_size << "\n";
+  outputStream << " \tsize: " << c.community_size << "\n";
+  outputStream << " \tdegree: " << c.community_degree << "\n";
 
-  for (list<Member>::iterator it=c.community_neighs.begin(); it!=c.community_neighs.end(); it++) {
+  outputStream << "--- members ---\n";
+  for (list<Member>::iterator it=c.community_members.begin(); 
+          it!=c.community_members.end(); it++) {
+    outputStream << "\t|---" << (*it);
+  }
+
+  outputStream << "--- neighbors ---\n";
+  for (list<Member>::iterator it=c.community_neighs.begin(); 
+          it!=c.community_neighs.end(); it++) {
     outputStream << "\t|---" << (*it);
   }
 
@@ -70,7 +79,7 @@ void Community::sort_pairs () {
  * ----------------------------------------------------------------------------
  * j:  member id.
  *
- * returns:  boolean true if the community contains member j
+ * returns:  boolean true if the community neighbors list contains member j.
  */
 bool Community::contains (int j) {
   for (list<Member>::iterator it=community_neighs.begin(); 
@@ -83,11 +92,12 @@ bool Community::contains (int j) {
 
 /* [Header] Function:  scan_max
  * ----------------------------------------------------------------------------
- * Scan the community neighboring to find the member with maximum delta Q value
+ * Scan the community neighborhood to find the member with maximum 
+ * delta Q value.
  *
- * av:  vector of double.
+ * av: vector of double.
  *
- * returns:  
+ * returns: 
  */
 int Community::scan_max (vector<double>& av) {
 
@@ -120,7 +130,7 @@ int Community::scan_max (vector<double>& av) {
 
 /* [Header] Function:  remove_element
  * ----------------------------------------------------------------------------
- * Remove a specified element from the neighbor list.
+ * Remove a specified element from the neighbors list.
  *
  * mbr: member id to be removed.
  */
@@ -133,6 +143,10 @@ void Community::remove_element (int mbr) {
       break;
     }
   }
+}
+
+void Community::m_union (Community& c) {
+  community_members.splice(community_members.begin(), c.community_members);
 }
 
 /* [Header] Function:  merge

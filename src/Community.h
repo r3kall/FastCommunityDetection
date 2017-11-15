@@ -41,10 +41,12 @@ class Community {
 
 public:
 
-  int          community_id;
-  size_t       community_size;
-  list<Member> community_neighs;
-  Member*      community_max;
+  int          community_id;       // community id.
+  list<Member> community_neighs;   // list of neighbors.
+  size_t       community_degree;   // number of neighbors.
+  Member*      community_max;      // neighbor with maximum deltaQ value.
+  list<Member> community_members;  // list of effective members.
+  size_t       community_size;     // number of members.
 
   Community  ();
   Community  (int);
@@ -56,7 +58,7 @@ public:
   // increase community size.
   void add_member (Member& p) {
     community_neighs.push_back(p);
-    community_size++;
+    community_degree++;
   }
   
   void sort_pairs ();  // Sort the pair vector
@@ -68,7 +70,9 @@ public:
 
   void remove_element (int);  // remove a member from the list
 
-  void c_union (Community& c, vector<double>& av);  // merge two communities
+  void m_union (Community&);  // merge members lists
+
+  void c_union (Community&, vector<double>&);  // merge two communities
 };
 
 #endif // __COMMUNITY_H

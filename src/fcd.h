@@ -50,7 +50,9 @@ private:
 	double pdq;  // delta Q
 };
 
-pair<vector<Community>, int> populate_universe ();
+bool fileExists (const string&);
+
+pair<vector<Community>, int> populate_universe (string);
 
 vector<double> populate_array (vector<Community>&, int);
 
@@ -58,6 +60,7 @@ priority_queue<Pair> populate_heap (vector<Community>&, vector<double>&);
 
 void merge_communities (Community&, Community&, vector<double>&);
 
-void fcd (vector<Community>&, vector<double>&, priority_queue<Pair>&, int);
+tuple<int, double, double> fcd (vector<Community>&, 
+				vector<double>&, priority_queue<Pair>&, int);
 
 #endif // __FCD_H

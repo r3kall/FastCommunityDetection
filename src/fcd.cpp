@@ -21,26 +21,14 @@
  * ============================================================================
  */
 
+#include <sys/stat.h>
 #include <iostream>
+#include <sstream>
 #include <fstream>
 #include <cmath>
 #include <ctime>
 
 #include "fcd.h"
-
-#define FILENAME "Amazon0505.txt"
-
-
-/* ========================================================================= */
-vector<double>       arrv;  /* Array of elements A (see paper). If a value
-                               is less than zero, it means that the
-                               corresponding community was merged 
-                               within another. */
-vector<Community>    univ;  /* Array of Communities. */
-priority_queue<Pair> heap;  /* Max-Heap of pairs delta Q value. */
-int                  m;     /* Number of edges */
-
-/* ========================================================================= */
 
 
 Pair::Pair () {
@@ -53,6 +41,53 @@ Pair::Pair (int i, int j, double q) {
   cty = i;
   mbr = j;
   pdq = q;
+}
+
+
+/* [header] function:  fileExists
+ * ----------------------------------------------------------------------------
+ * Check if a file exists.
+ * Args:
+ *    - file: filename
+ * Returns: true if and only if the file exists, false else.
+ */
+bool fileExists (const string& file) {
+  struct stat buf;
+  return (stat(file.c_str(), &buf) == 0);
+}
+
+
+/* [] function:  process_dataset
+ * ----------------------------------------------------------------------------
+ * Write community vector in a text file in a proper way.
+ * Args:
+ *    - filename: trivial.
+ *    - univ:     community vector.
+ *    - m:        number of edges.
+ *
+ * Returns: 0 if success, 1 otherwise.
+ */
+int process_dataset (string filename, vector<Community>& univ, int m) {  
+  cout << "Start process dataset..." << endl;
+  ofstream outfile(filename + "_preprocess.txt");
+  if (outfile.is_open()) {
+    outfile << univ.size() << "\n";
+    outfile << m << "\n";
+    for (int x=0; x<univ.size(); x++) {
+      outfile << univ[x].community_id << "\n";
+      for (list<Member>::iterator it=univ[x].community_neighs.begin(); 
+          it!=univ[x].community_neighs.end(); it++) {
+        outfile << it->id() << " ";
+      }
+      outfile << "\n";
+    }
+    outfile.close();
+  } else {
+    cerr << "Error opening output file." << endl;
+    return 1;
+  }
+  cout << "Finish process dataset." << endl;
+  return 0;
 }
 
 
@@ -69,39 +104,92 @@ Pair::Pair (int i, int j, double q) {
  */
 int read_data_set (string filename, vector<Community>& univ) {
 
-  int i, j, rs, cnt;
-  ifstream myfile(filename);
+  // name of the preprocessed file.
+  string outfilename = filename + "_preprocess.txt";
+  if (!fileExists(outfilename)) {
+    cout << "Preprocessed version of file " << filename << " doesn't exists.";
+    cout << " It will be done a new one !!" << endl;
+    int i, j, rs;
+    ifstream myfile(filename);
 
-  cnt = 0;
-  if (myfile.is_open()) {
-    while (myfile >> i >> j) {   
-      
-      if (i == j)
-        continue;
+    if (myfile.is_open()) {
+      int iter = 0;
+      while (myfile >> i >> j) {
+        if (iter % 1000000 == 0) cout << "step: " << iter << endl;
+        if (i == j)
+          continue;
 
-      if ( i >= univ.size() || j >= univ.size()) {
-        rs = max(i, j) + 1;
-        univ.resize(rs); 
+        if ( i >= univ.size() || j >= univ.size()) {
+          rs = max(i, j) + 1;
+          univ.resize(rs);
+          cout << "Resize at step " << iter << " of " << rs << endl;
+        }
+
+        univ[i].community_id = i;
+        if (!univ[i].contains(j)) 
+          univ[i].add_member(*(new Member(j, 0)));
+
+        univ[j].community_id = j;
+        if (!univ[j].contains(i))
+          univ[j].add_member(*(new Member(i, 0)));
+
+        iter++;
       }
-
-      univ[i].community_id = i;
-      if (!univ[i].contains(j)) 
-        univ[i].add_member(*(new Member(j, 0)));
-
-      univ[j].community_id = j;
-      if (!univ[j].contains(i))
-        univ[j].add_member(*(new Member(i, 0)));
+      myfile.close();
+    } else {
+      cout << "Error opening input file" << endl;
+      exit(1);
     }
-    myfile.close();
-  } else {
-    cout << "Error opening the file" << endl;
-    exit(1);
+
+    // edge count
+    int edges = 0;
+    cout << "Counting number of edges..." << endl;
+    for (int c=0; c<univ.size(); c++)
+      edges += univ[c].community_degree;
+    edges /= 2;    
+
+    cout << "Saving dataset..." << endl;
+    process_dataset(filename, univ, edges);
+
+    return edges;
   }
-  // if Amazon0505.txt
-  for (int c=0; c<univ.size(); c++)
-    cnt += univ[c].community_size;
-  
-  return cnt/2;
+ 
+  cout << "Preprocessed version of " << filename << " exists !!" << endl;
+  // read the processed file  
+  ifstream prefile(outfilename);
+  string line;
+  int n, m, x, y;
+  if (prefile.is_open()) {
+    // get number of nodes
+    getline(prefile, line);
+    istringstream iss(line);
+    iss >> n;
+
+    // get number of edges
+    getline(prefile, line);
+    iss = istringstream(line);
+    iss >> m;
+
+    // resize community vector
+    univ.resize(n);
+
+    while (getline(prefile, line)) {
+      iss = istringstream(line);
+      iss >> x;
+      univ[x].community_id = x;
+      // TODO: posso rimuovere nel file l'id, sono ordinati.
+
+      getline(prefile, line);
+      iss = istringstream(line);
+      while (iss >> y) {
+        // add to community x
+        univ[x].add_member(*(new Member(y, 0)));
+      }
+    }
+    prefile.close();
+  }
+
+  return m;
 }
 
 
@@ -125,31 +213,32 @@ double c_dq (int ki, int kj, int m) {
  * ----------------------------------------------------------------------------
  * Exposed function that initialized the community universe/vector.
  *
- * Args: /
+ * Args:
+ *    - filename: dataset filename.
  *
  * Returns: the community vector and the number of edges.
  */
-pair<vector<Community>, int> populate_universe () {
+pair<vector<Community>, int> populate_universe (string filename) {
 
-  int j;
+  int j, m;
   double cdq;
   vector<Community> univ;
   clock_t begin = clock();
 
-  int m = read_data_set(FILENAME, univ);
+  m = read_data_set(filename, univ);
+  
   for (int i=0; i<univ.size(); i++) {
     for (list<Member>::iterator it=univ[i].community_neighs.begin(); 
         it!=univ[i].community_neighs.end(); it++) {
       j = (*it).id();
-      cdq = c_dq( univ[i].community_size, univ[j].community_size, m );
+      cdq = c_dq( univ[i].community_degree, univ[j].community_degree, m );
       (*it).setdq(cdq);
     }
     univ[i].sort_pairs();
+    univ[i].community_members.push_back(*(new Member(i, 0)));
   }
   
   clock_t end = clock();
-  cout << "Universe size: " << univ.size() << endl;
-  cout << "Universe edges: " << m << endl;
   double elapsed = double(end - begin) / CLOCKS_PER_SEC;
   cout << "Time to populate community universe: " << elapsed << " seconds" << endl;
 
@@ -173,7 +262,7 @@ vector<double> populate_array (vector<Community>& univ, int m) {
   vector<double> av;
   double k = (double)(0.5/m);
   for (int i=0; i<univ.size(); i++)
-    av.push_back( univ[i].community_size * k );
+    av.push_back( univ[i].community_degree * k );
   clock_t end = clock();
   double elapsed = double(end - begin) / CLOCKS_PER_SEC;
   cout << "Time to populate double array: " << elapsed << " seconds" << endl;
@@ -224,14 +313,21 @@ priority_queue<Pair> populate_heap (vector<Community>& univ, vector<double>& av)
  */
 void merge_communities (Community& a, Community& b, vector<double>& av) {
 
-    // remove community a from the neighbor list of b
-    b.remove_element(a.community_id);
+    // remove community a from the neighbor list of b.
+    b.remove_element(a.community_id);    
 
-    // merge community b into community a.
+    // merge community neighborhood b into community a.
     a.c_union(b, av);
 
+    // merge members lists.
+    a.m_union(b);
+
+    // update degree.
+    a.community_degree = a.community_neighs.size();
+    b.community_degree = 0;
+
     // update sizes.
-    a.community_size = a.community_neighs.size() + 1;
+    a.community_size = a.community_members.size();
     b.community_size = 0;
 
     // update av.
@@ -258,6 +354,25 @@ double init_Q (vector<double>& av, int m) {
 }
 
 
+double fcd_low_degree (vector<Community>& univ, vector<double>& av) {
+
+  int m_id;
+  double low_dQ = 0;
+  for (int i=0; i<univ.size(); i++) {
+    if (univ[i].community_degree == 1) {
+      if (univ[i].community_max != NULL) {
+        m_id = univ[i].community_max->id();
+        if (av[m_id] > 0) {
+          low_dQ += univ[i].community_max->dq();
+          merge_communities(univ[m_id], univ[i], av);
+        }
+      }
+    }
+  }
+  return low_dQ;
+}
+
+
 /* [header] function:  fcd
  * ----------------------------------------------------------------------------
  * Header function that run the fast community detection algorithm.
@@ -267,19 +382,29 @@ double init_Q (vector<double>& av, int m) {
  *    - av  : double vector.
  *    - heap: max-heap.
  *    - m   : number of edges.
+ *
+ * Returns: tuple of <chunk_size, total_time, Q>
  */
-void fcd (vector<Community>& univ, vector<double>& av, priority_queue<Pair>& heap, int m) {
+tuple<int, double, double> fcd (vector<Community>& univ, 
+        vector<double>& av, priority_queue<Pair>& heap, int m) {
   
 	Pair p;
 	int x, y, sm;
   double elapsed;
+  tuple<int, double, double> res_tuple;
 
   double Q = init_Q(av, m);
-  int c = 0; 
+  int c = 0;
+
+  // prune one-degree communities
+  Q += fcd_low_degree(univ, av);
 
   queue<Pair> queue;
-  double epsilon = 1 / double(2*m);
-  int max_queue_size = min(int(univ.size()/2), 64);
+  int chunck_size      = 64;
+  double epsilon       = 1 / double(2*m);  
+  double max_epsilon   = 2 / double(univ.size());
+  double epsilon_coeff = (max_epsilon / epsilon) / double(univ.size());
+  int max_queue_size   = min(int(univ.size()/2), chunck_size);
 
   clock_t begin_total = clock();
 	while (!heap.empty() || !queue.empty()) {
@@ -321,8 +446,8 @@ void fcd (vector<Community>& univ, vector<double>& av, priority_queue<Pair>& hea
       break;
     }
 
-    if (queue.size() < max_queue_size && epsilon < 0.0001)
-      epsilon *= 2.0;
+    if (queue.size() < max_queue_size && epsilon < max_epsilon)
+      epsilon += epsilon_coeff;
 
     while (!queue.empty()) {  // start to process queue
       p = queue.front();
@@ -355,7 +480,7 @@ void fcd (vector<Community>& univ, vector<double>& av, priority_queue<Pair>& hea
 
       // update maximum delta Q member of community x
       sm = univ[x].scan_max(av);
-      if (sm > 0) {        
+      if (sm > 0) { 
         // insert new max in the heap
         heap.push(*(new Pair(univ[x].community_id, 
                              univ[x].community_max->id(), 
@@ -372,7 +497,6 @@ void fcd (vector<Community>& univ, vector<double>& av, priority_queue<Pair>& hea
 
   clock_t end_total = clock();
   double elapsed_total = double(end_total - begin_total) / CLOCKS_PER_SEC;
-  cout << "\ntotal_time: " << elapsed_total << " seconds\n" << endl;
-  cout << "Q: " << Q << endl;
-  cout << "epsilon: " << epsilon << endl;
+
+  return make_tuple(chunck_size, elapsed_total, Q);
 }
