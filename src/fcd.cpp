@@ -332,7 +332,7 @@ void merge_communities (Community& a, Community& b, vector<double>& av) {
 
     // update av.
     av[a.community_id] = av[a.community_id] + av[b.community_id];
-    av[b.community_id] = -1;
+    av[b.community_id] = - a.community_id;
 }
 
 

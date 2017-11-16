@@ -85,9 +85,12 @@ bool check_member (vector<Community>& univ, vector<int> ratings, int cm, int mbm
 }
 
 
-void communities_to_csv (vector<Community>& univ, vector<int> ratings, string filename) {
+void communities_to_csv (vector<Community>& univ, vector<int> ratings, 
+				vector<double>& av, string filename) {
+
 	cout << "Converting to CSV ... Start" << endl;
-  ofstream vertexfile(filename + "_vertices.csv");
+	string r = to_string(ratings.size());
+  ofstream vertexfile(filename + "_vertices_" + r + ".csv");
   if (vertexfile.is_open()) {
 		vertexfile << "Id," << "Community\n";
 		for (int i=0; i<ratings.size(); i++) {
@@ -102,19 +105,24 @@ void communities_to_csv (vector<Community>& univ, vector<int> ratings, string fi
     exit(1);
   }
 
-  ofstream edgefile(filename + "_edges.csv");
+  int parent;
+  ofstream edgefile(filename + "_edges_" + r + ".csv");
   if (edgefile.is_open()) {
   	edgefile << "Source,Target\n";
   	for (int i=0; i<ratings.size(); i++) {
   		for (list<Member>::iterator it=univ[ratings[i]].community_members.begin(); 
       				it!=univ[ratings[i]].community_members.end(); it++) {
-  			edgefile << it->id() << "," << ratings[i] << "\n";
+  			if (it->id() != ratings[i]) {
+  				parent = (int) abs(av[it->id()]);
+  				edgefile << it->id() << "," << parent << "\n";
+  			}
   		}
+  		
   		for (list<Member>::iterator it=univ[ratings[i]].community_neighs.begin(); 
       				it!=univ[ratings[i]].community_neighs.end(); it++) {
   			if (check_member(univ, ratings, ratings[i], it->id()))
   				edgefile << it->id() << "," << ratings[i] << "\n";
-  		}
+  		}  		
   	}
   	edgefile.close();
   } else {
@@ -171,7 +179,7 @@ int main(int argc, char *argv[]) {
   stats(univ);
   vector<int> ratings = community_rating(univ, 8);
 
-  communities_to_csv(univ, ratings, filename);
+  communities_to_csv(univ, ratings, arrv, filename);
 
  	exit(0);
 }
