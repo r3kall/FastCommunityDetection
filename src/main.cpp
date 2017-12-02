@@ -30,13 +30,15 @@
 
 
 void stats (vector<Community>& univ) {
+  int n_of_singleton       = 0;
 	int n_of_communities     = 0;
 	int max_community_size   = 0;
 	int min_community_size   = univ.size();
 	int total_community_size = 0;
 
 	for (int c=0; c<univ.size(); c++) {
-		if (univ[c].community_size > 0) {
+    if (univ[c].community_size == 1) n_of_singleton++;
+		if (univ[c].community_size > 1) {
 			n_of_communities++;
     	max_community_size = max(max_community_size, (int)univ[c].community_size);
     	min_community_size = min(min_community_size, (int)univ[c].community_size);
@@ -46,6 +48,7 @@ void stats (vector<Community>& univ) {
 
 	double mean_community_size = total_community_size / double(n_of_communities);
 
+  cout << "Number of Singleton: " << n_of_singleton << "\n";
 	cout << "Number of Communities: " << n_of_communities << "\n";
 	cout << "Max Community Size: " << max_community_size;
 	cout << "\tMin Community Size: " << min_community_size;
@@ -177,9 +180,9 @@ int main(int argc, char *argv[]) {
   cout << "Max Q: " << Q << "\n" << endl;
 
   stats(univ);
-  vector<int> ratings = community_rating(univ, 8);
+  // vector<int> ratings = community_rating(univ, 8);
 
-  communities_to_csv(univ, ratings, arrv, filename);
+  // communities_to_csv(univ, ratings, arrv, filename);
 
  	exit(0);
 }

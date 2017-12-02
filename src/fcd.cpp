@@ -314,7 +314,9 @@ priority_queue<Pair> populate_heap (vector<Community>& univ, vector<double>& av)
 void merge_communities (Community& a, Community& b, vector<double>& av) {
 
     // remove community a from the neighbor list of b.
-    b.remove_element(a.community_id);    
+    b.remove_element(a.community_id);
+    // the same to community a.
+    // a.remove_element(b.community_id);
 
     // merge community neighborhood b into community a.
     a.c_union(b, av);
