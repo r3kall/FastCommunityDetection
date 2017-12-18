@@ -29,7 +29,7 @@
 #include "fcd.h"
 
 
-void stats (vector<Community>& univ) {
+tuple<int, int> stats (vector<Community>& univ) {
   int n_of_singleton       = 0;
 	int n_of_communities     = 0;
 	int max_community_size   = 0;
@@ -48,11 +48,12 @@ void stats (vector<Community>& univ) {
 
 	double mean_community_size = total_community_size / double(n_of_communities);
 
-  cout << "Number of Singleton: " << n_of_singleton << "\n";
-	cout << "Number of Communities: " << n_of_communities << "\n";
-	cout << "Max Community Size: " << max_community_size;
-	cout << "\tMin Community Size: " << min_community_size;
-	cout << "\tMean Community Size: " << mean_community_size << endl;
+  //cout << "Number of Singleton: " << n_of_singleton << "\n";
+	//cout << "Number of Communities: " << n_of_communities << "\n";
+	//cout << "Max Community Size: " << max_community_size;
+	//cout << "\tMin Community Size: " << min_community_size;
+	//cout << "\tMean Community Size: " << mean_community_size << endl;
+  return make_tuple(n_of_communities, n_of_singleton);
 }
 
 bool sortbysize (const pair<int,int>& a, const pair<int,int>& b) {
@@ -150,7 +151,7 @@ int main(int argc, char *argv[]) {
 	int                  m;     /* Number of edges */
 /* ========================================================================= */
 	
-	if (argc != 2) {
+	if (argc != 3) {
 		cerr << "Extra Command Line Arguments Error: wrong number of arguments" << endl;
 		exit(1);
 	}
@@ -158,6 +159,11 @@ int main(int argc, char *argv[]) {
 	istringstream ss(argv[1]);
 	string filename;
 	ss >> filename;
+  
+  istringstream ii(argv[2]);
+  int chunck_size;
+  if(!(ii >> chunck_size))
+    cerr << "Invalid number\n";
 
 	if (!fileExists(filename)) {
 		cerr << "Extra Command Line Arguments Error: file doesn't exists" << endl;
@@ -166,22 +172,29 @@ int main(int argc, char *argv[]) {
 
   tie(univ, m) = populate_universe(filename);
   arrv = populate_array(univ, m);
+  // fcd_low_degree(univ, arrv);
   heap = populate_heap(univ, arrv);
-
-  int chunk_size;
+  
   double total_time, Q;
+  tie(total_time, Q) = fcd(univ, arrv, heap, m, chunck_size);
 
-  tie(chunk_size, total_time, Q) = fcd(univ, arrv, heap, m);
+  int n_of_communities, n_of_singleton;
+  tie(n_of_communities, n_of_singleton) = stats(univ);
 
-  cout << "\nNumber of vertices: " << univ.size() << "\n";
-  cout << "Number of edges: " << m << "\n\n";
-  cout << "Chunk size: " << chunk_size << "\n";
-  cout << "Total time: " << total_time << "\n";
-  cout << "Max Q: " << Q << "\n" << endl;
+  ofstream myfile;
+  myfile.open ("summary_" + filename, ios::app);
+  myfile << "chunck_size " << chunck_size << " ";
+  myfile << "maxQ " << Q << " total_time " << total_time << " ";
+  myfile << "n_singleton " << n_of_singleton << " ";
+  myfile << "n_communities " << n_of_communities << "\n";
+  myfile.close();
 
-  stats(univ);
+  // cout << "\nNumber of vertices: " << univ.size() << "\n";
+  // cout << "Number of edges: " << m << "\n\n";
+  // cout << "Total time: " << total_time << "\n";
+  // cout << "Max Q: " << Q << "\n" << endl;  
+
   // vector<int> ratings = community_rating(univ, 8);
-
   // communities_to_csv(univ, ratings, arrv, filename);
 
  	exit(0);

@@ -44,6 +44,25 @@ Pair::Pair (int i, int j, double q) {
 }
 
 
+double fcd_low_degree (vector<Community>& univ, vector<double>& av) {
+
+  int m_id;
+  double low_dQ = 0;
+  for (int i=0; i<univ.size(); i++) {
+    if (univ[i].community_degree == 1) {
+      if (univ[i].community_max != NULL) {
+        m_id = univ[i].community_max->id();
+        if (av[m_id] > 0) {
+          low_dQ += univ[i].community_max->dq();
+          merge_communities(univ[m_id], univ[i], av);
+        }
+      }
+    }
+  }
+  return low_dQ;
+}
+
+
 /* [header] function:  fileExists
  * ----------------------------------------------------------------------------
  * Check if a file exists.
@@ -125,11 +144,11 @@ int read_data_set (string filename, vector<Community>& univ) {
           cout << "Resize at step " << iter << " of " << rs << endl;
         }
 
-        univ[i].community_id = i;
+        //univ[i].community_id = i;
         if (!univ[i].contains(j)) 
           univ[i].add_member(*(new Member(j, 0)));
 
-        univ[j].community_id = j;
+        //univ[j].community_id = j;
         if (!univ[j].contains(i))
           univ[j].add_member(*(new Member(i, 0)));
 
@@ -140,6 +159,11 @@ int read_data_set (string filename, vector<Community>& univ) {
       cout << "Error opening input file" << endl;
       exit(1);
     }
+
+    // id correction
+    cout << "Assigning IDs..." << endl;
+    for (int id=0; id<univ.size(); id++)
+      univ[id].community_id = id;
 
     // edge count
     int edges = 0;
@@ -154,7 +178,7 @@ int read_data_set (string filename, vector<Community>& univ) {
     return edges;
   }
  
-  cout << "Preprocessed version of " << filename << " exists !!" << endl;
+  // cout << "Preprocessed version of " << filename << " exists !!" << endl;
   // read the processed file  
   ifstream prefile(outfilename);
   string line;
@@ -177,7 +201,6 @@ int read_data_set (string filename, vector<Community>& univ) {
       iss = istringstream(line);
       iss >> x;
       univ[x].community_id = x;
-      // TODO: posso rimuovere nel file l'id, sono ordinati.
 
       getline(prefile, line);
       iss = istringstream(line);
@@ -228,19 +251,22 @@ pair<vector<Community>, int> populate_universe (string filename) {
   m = read_data_set(filename, univ);
   
   for (int i=0; i<univ.size(); i++) {
-    for (list<Member>::iterator it=univ[i].community_neighs.begin(); 
-        it!=univ[i].community_neighs.end(); it++) {
-      j = (*it).id();
-      cdq = c_dq( univ[i].community_degree, univ[j].community_degree, m );
-      (*it).setdq(cdq);
+    if (univ[i].community_degree > 0) {
+      for (list<Member>::iterator it=univ[i].community_neighs.begin(); 
+          it!=univ[i].community_neighs.end(); it++) {
+        j = (*it).id();
+        cdq = c_dq( univ[i].community_degree, univ[j].community_degree, m );
+        (*it).setdq(cdq);
+      }
+      univ[i].sort_pairs();
+      univ[i].community_members.push_back(*(new Member(i, 0)));
+      univ[i].community_size++;
     }
-    univ[i].sort_pairs();
-    univ[i].community_members.push_back(*(new Member(i, 0)));
   }
   
   clock_t end = clock();
   double elapsed = double(end - begin) / CLOCKS_PER_SEC;
-  cout << "Time to populate community universe: " << elapsed << " seconds" << endl;
+  // cout << "Time to populate community universe: " << elapsed << " seconds" << endl;
 
   return make_pair(univ, m);
 }
@@ -265,7 +291,7 @@ vector<double> populate_array (vector<Community>& univ, int m) {
     av.push_back( univ[i].community_degree * k );
   clock_t end = clock();
   double elapsed = double(end - begin) / CLOCKS_PER_SEC;
-  cout << "Time to populate double array: " << elapsed << " seconds" << endl;
+  // cout << "Time to populate double array: " << elapsed << " seconds" << endl;
 
   return av;
 }
@@ -285,18 +311,18 @@ priority_queue<Pair> populate_heap (vector<Community>& univ, vector<double>& av)
   
   clock_t begin = clock();
   priority_queue<Pair> pq;
-  double ratio;
 
   for (int i=0; i<univ.size(); i++) {
     univ[i].scan_max(av);
     if (univ[i].community_max != NULL) {
       pq.push(*(new Pair(univ[i].community_id, 
-        univ[i].community_max->id(), univ[i].community_max->dq())));
+                         univ[i].community_max->id(),
+                         univ[i].community_max->dq())));
     }
   }
   clock_t end = clock();
   double elapsed = double(end - begin) / CLOCKS_PER_SEC;
-  cout << "Time to populate max-heap: " << elapsed << " seconds" << endl;
+  // cout << "Time to populate max-heap: " << elapsed << " seconds" << endl;
   
   return pq;
 }
@@ -313,11 +339,7 @@ priority_queue<Pair> populate_heap (vector<Community>& univ, vector<double>& av)
  */
 void merge_communities (Community& a, Community& b, vector<double>& av) {
 
-    // remove community a from the neighbor list of b.
-    b.remove_element(a.community_id);
-    // the same to community a.
-    // a.remove_element(b.community_id);
-
+    // b.remove_element(a.community_id);
     // merge community neighborhood b into community a.
     a.c_union(b, av);
 
@@ -325,16 +347,16 @@ void merge_communities (Community& a, Community& b, vector<double>& av) {
     a.m_union(b);
 
     // update degree.
-    a.community_degree = a.community_neighs.size();
-    b.community_degree = 0;
+    // a.community_degree = a.community_neighs.size();
+    // b.community_degree = 0;
 
     // update sizes.
     a.community_size = a.community_members.size();
     b.community_size = 0;
 
-    // update av.
-    av[a.community_id] = av[a.community_id] + av[b.community_id];
-    av[b.community_id] = - a.community_id;
+    // update double vector
+    av[a.community_id] += av[b.community_id];
+    av[b.community_id] = -a.community_id;
 }
 
 
@@ -344,34 +366,15 @@ void merge_communities (Community& a, Community& b, vector<double>& av) {
  *
  * Args:
  *    - av: non-empty double vector.
- *    - m : number of edges.
+ *
+ * Returns: starting value of Q.
  */
-double init_Q (vector<double>& av, int m) {
+double init_Q (vector<double>& av) {
   double Q = 0.0;
-  double k = (double)(0.5/m);
   for (int i=0; i<av.size(); i++) {
     Q -= av[i] * av[i];
   }
   return Q;
-}
-
-
-double fcd_low_degree (vector<Community>& univ, vector<double>& av) {
-
-  int m_id;
-  double low_dQ = 0;
-  for (int i=0; i<univ.size(); i++) {
-    if (univ[i].community_degree == 1) {
-      if (univ[i].community_max != NULL) {
-        m_id = univ[i].community_max->id();
-        if (av[m_id] > 0) {
-          low_dQ += univ[i].community_max->dq();
-          merge_communities(univ[m_id], univ[i], av);
-        }
-      }
-    }
-  }
-  return low_dQ;
 }
 
 
@@ -384,35 +387,36 @@ double fcd_low_degree (vector<Community>& univ, vector<double>& av) {
  *    - av  : double vector.
  *    - heap: max-heap.
  *    - m   : number of edges.
+ *    - chunk_size: trivial.
  *
- * Returns: tuple of <chunk_size, total_time, Q>
+ * Returns: tuple of <total_time, Q>
  */
-tuple<int, double, double> fcd (vector<Community>& univ, 
-        vector<double>& av, priority_queue<Pair>& heap, int m) {
+tuple<double, double> fcd (vector<Community>& univ, 
+        vector<double>& av, priority_queue<Pair>& heap, int m, int chunck_size) {
   
 	Pair p;
-	int x, y, sm;
-  double elapsed;
-  tuple<int, double, double> res_tuple;
+	int x, y, sm, defm;
+  double elapsed, top_element;
+  clock_t begin, end;
 
-  double Q = init_Q(av, m);
-  int c = 0;
+  double Q = init_Q(av);
+  int iter = 0;
 
-  // prune one-degree communities
-  Q += fcd_low_degree(univ, av);
-
-  queue<Pair> queue;
-  int chunck_size      = 64;
+  priority_queue<Pair> queue;
+  // int chunck_size      = 32;
   double epsilon       = 1 / double(2*m);  
   double max_epsilon   = 2 / double(univ.size());
   double epsilon_coeff = (max_epsilon / epsilon) / double(univ.size());
   int max_queue_size   = min(int(univ.size()/2), chunck_size);
 
-  clock_t begin_total = clock();
-	while (!heap.empty() || !queue.empty()) {
+  Q += fcd_low_degree(univ, av);
 
-    // if heap not empty
+  clock_t begin_total = clock();
+  while (!heap.empty() || !queue.empty()) {
+  	
     while (!heap.empty()) {
+
+      // if heap not empty    
       p = heap.top();
       x = p.community_i();
       y = p.community_j();
@@ -426,53 +430,44 @@ tuple<int, double, double> fcd (vector<Community>& univ,
         // if valid max
         if (sm > 0) {
           heap.push(*(new Pair(univ[x].community_id, 
-                               univ[x].community_max->id(), 
+                               univ[x].community_max->id(),
                                univ[x].community_max->dq()
                               )));
         }       
         continue;   
       }
-
+      
       if (queue.empty()) {
+        top_element = p.dq();
         queue.push(p);
-        continue;
       }
-
-      if (queue.size() >= max_queue_size) break;
-
-      if (abs(p.dq() - queue.front().dq()) < epsilon) {
-        queue.push(p);
-        continue;
-      }
-
-      break;
+      else if (queue.size() >= max_queue_size) break;
+      else if (abs(top_element - p.dq()) < epsilon) queue.push(p);
     }
 
-    if (queue.size() < max_queue_size && epsilon < max_epsilon)
+    if (epsilon < max_epsilon)
       epsilon += epsilon_coeff;
 
-    while (!queue.empty()) {  // start to process queue
-      p = queue.front();
+    while (!queue.empty()) {
+      p = queue.top();
       x = p.community_i();
       y = p.community_j();
       queue.pop();
 
       if (av[x] <= 0) continue;
-
+           
       if (av[y] <= 0) {
-        // scan max for community x
         sm = univ[x].scan_max(av);
-        // if valid max
         if (sm > 0) {
-          heap.push(*(new Pair(univ[x].community_id, 
-                               univ[x].community_max->id(), 
+          queue.push(*(new Pair(univ[x].community_id, 
+                               univ[x].community_max->id(),
                                univ[x].community_max->dq()
                               )));
         }       
-        continue;
+        continue;   
       }
-      
-      clock_t begin = clock();
+        
+      begin = clock();
 
       // update Q
       Q += univ[x].community_max->dq();
@@ -485,20 +480,20 @@ tuple<int, double, double> fcd (vector<Community>& univ,
       if (sm > 0) { 
         // insert new max in the heap
         heap.push(*(new Pair(univ[x].community_id, 
-                             univ[x].community_max->id(), 
+                             univ[x].community_max->id(),
                              univ[x].community_max->dq()
                             )));
       }
 
-      clock_t end = clock();
+      end = clock();
       elapsed = double(end - begin) / CLOCKS_PER_SEC;
-      cout << "x: " << x << " y: " << y << " time: " << elapsed << endl;      
-    }
-    c++;
-	}   
+      // cout << "x: " << x << " y: " << y << " time: " << elapsed << endl; 
+  	}
+    iter++;
+  }
 
   clock_t end_total = clock();
   double elapsed_total = double(end_total - begin_total) / CLOCKS_PER_SEC;
 
-  return make_tuple(chunck_size, elapsed_total, Q);
+  return make_tuple(elapsed_total, Q);
 }

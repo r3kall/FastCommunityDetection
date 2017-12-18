@@ -60,7 +60,7 @@ priority_queue<Pair> populate_heap (vector<Community>&, vector<double>&);
 
 void merge_communities (Community&, Community&, vector<double>&);
 
-tuple<int, double, double> fcd (vector<Community>&, 
-				vector<double>&, priority_queue<Pair>&, int);
+tuple<double, double> fcd (
+				vector<Community>&, vector<double>&, priority_queue<Pair>&, int, int);
 
 #endif // __FCD_H
