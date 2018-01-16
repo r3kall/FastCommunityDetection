@@ -28,51 +28,59 @@
 
 #include "fcd.h"
 
-
+/* simple stats */
 tuple<int, int> stats (vector<Community>& univ) {
-  int n_of_singleton       = 0;
-	int n_of_communities     = 0;
-	int max_community_size   = 0;
-	int min_community_size   = univ.size();
-	int total_community_size = 0;
+  int n_of_singleton   = 0;
+	int n_of_communities = 0;
 
 	for (int c=0; c<univ.size(); c++) {
     if (univ[c].community_size == 1) n_of_singleton++;
-		if (univ[c].community_size > 1) {
-			n_of_communities++;
-    	max_community_size = max(max_community_size, (int)univ[c].community_size);
-    	min_community_size = min(min_community_size, (int)univ[c].community_size);
-    	total_community_size += univ[c].community_size;
-  	}
+		if (univ[c].community_size > 1) n_of_communities++;
 	}
 
-	double mean_community_size = total_community_size / double(n_of_communities);
-
-  //cout << "Number of Singleton: " << n_of_singleton << "\n";
-	//cout << "Number of Communities: " << n_of_communities << "\n";
-	//cout << "Max Community Size: " << max_community_size;
-	//cout << "\tMin Community Size: " << min_community_size;
-	//cout << "\tMean Community Size: " << mean_community_size << endl;
   return make_tuple(n_of_communities, n_of_singleton);
 }
 
-bool sortbysize (const pair<int,int>& a, const pair<int,int>& b) {
-	return a.second > b.second;
-}
 
-vector<int> community_rating (vector<Community>& univ, int r) {
+/* [] function:  community_ranking
+ * ----------------------------------------------------------------------------
+ * Sort and select first r communities by size.
+ *
+ * Args:
+ *    - univ : non-empty community vector.
+ *    - r    : number of communities to be retrieved.
+ *
+ * Returns: sorted vector of community IDs.
+ */
+vector<int> community_ranking (vector<Community>& univ, int r) {
+#ifdef DEBUG
+  clock_t begin = clock();
+#endif
+
 	vector< pair<int,int> > vect;
 	for (int i=0; i<univ.size(); i++) {
 		if (univ[i].community_size > 1) {
 			vect.push_back( make_pair(univ[i].community_id, univ[i].community_size) );
 		}
 	}
-	sort(vect.begin(), vect.end(), sortbysize);
+
+	sort(vect.begin(), vect.end(), 
+    [](const pair<int,int>& a, const pair<int,int>& b) -> bool {
+      // lambda function
+      return a.second > b.second;
+  });
 
 	vector<int> ratings;
 	for (int j=0; j<r; j++) {
 		ratings.push_back(vect[j].first);
 	}
+
+#ifdef DEBUG
+  clock_t end = clock();
+  double elapsed = double(end - begin) / CLOCKS_PER_SEC;
+  cout << "Time to rank communities: " << elapsed << " seconds" << endl;
+#endif
+
 	return ratings;
 }
 
@@ -172,7 +180,6 @@ int main(int argc, char *argv[]) {
 
   tie(univ, m) = populate_universe(filename);
   arrv = populate_array(univ, m);
-  // fcd_low_degree(univ, arrv);
   heap = populate_heap(univ, arrv);
   
   double total_time, Q;
@@ -189,12 +196,12 @@ int main(int argc, char *argv[]) {
   myfile << "n_communities " << n_of_communities << "\n";
   myfile.close();
 
-  // cout << "\nNumber of vertices: " << univ.size() << "\n";
-  // cout << "Number of edges: " << m << "\n\n";
-  // cout << "Total time: " << total_time << "\n";
-  // cout << "Max Q: " << Q << "\n" << endl;  
+  cout << "\nNumber of vertices: " << univ.size() << "\n";
+  cout << "Number of edges: " << m << "\n\n";
+  cout << "Total time: " << total_time << "\n";
+  cout << "Max Q: " << Q << "\n" << endl;
 
-  // vector<int> ratings = community_rating(univ, 8);
+  vector<int> ratings = community_ranking(univ, 8);
   // communities_to_csv(univ, ratings, arrv, filename);
 
  	exit(0);

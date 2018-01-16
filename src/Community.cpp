@@ -67,7 +67,7 @@ ostream& operator << (ostream& outputStream, Community& c) {
 
 }
 
-/* [Header] Function:  sort_pairs
+/* [header] function:  sort_pairs
  * ----------------------------------------------------------------------------
  * Sort neighbors list based on member order.
  */
@@ -75,9 +75,10 @@ void Community::sort_pairs () {
   community_neighs.sort(member_cmp);
 }
 
-/* [Header] Function:  contains
+/* [header] function:  contains
  * ----------------------------------------------------------------------------
- * j:  member id.
+ * Args:
+ *    - j :  member id.
  *
  * returns:  boolean true if the community neighbors list contains member j.
  */
@@ -90,14 +91,15 @@ bool Community::contains (int j) {
   return false;
 }
 
-/* [Header] Function:  scan_max
+/* [header] function:  scan_max
  * ----------------------------------------------------------------------------
  * Scan the community neighborhood to find the member with maximum 
  * delta Q value.
  *
- * av: vector of double.
+ * Args:
+ *    - av : vector of double.
  *
- * returns: 
+ * Returns: 1 if new maximum is found, 0 if same value, -1 if invalid. 
  */
 int Community::scan_max (vector<double>& av) {
 
@@ -135,11 +137,12 @@ int Community::scan_max (vector<double>& av) {
   } else return -1;
 }
 
-/* [Header] Function:  remove_element
+/* [header] function:  remove_element
  * ----------------------------------------------------------------------------
  * Remove a specified element from the neighbors list.
  *
- * mbr: member id to be removed.
+ * Args:
+ *    - mbr : member id to be removed.
  */
 void Community::remove_element (int mbr) {
 
@@ -152,18 +155,28 @@ void Community::remove_element (int mbr) {
   }
 }
 
+
+/* [header] function:  m_union
+ * ---------------------------------------------
+ * Merge two communities member lists.
+ *
+ * Args:
+ *    - c  :  the community that will be merged.
+ *    - av :  vector of double.
+ */
 void Community::m_union (Community& c) {
   community_members.splice(community_members.begin(), c.community_members);
 }
 
-/* [Header] Function:  merge
+
+/* [header] function:  c_union
  * ---------------------------------------------
  * Merge two communities and change the delta Q according to equations.
  *
- * cm:  the community that will be merged.
- * av:  vector of double.
+ * Args:
+ *    - c  :  the community that will be merged.
+ *    - av :  vector of double.
  */
-
 void Community::c_union (Community& c, vector<double>& av) {
 
   // define iterators
@@ -245,64 +258,3 @@ void Community::c_union (Community& c, vector<double>& av) {
     }
   }
 }
-
-/*
-void Community::c_union (Community& c, vector<double>& av) {
-
-  // define iterators
-  list<Member>::iterator xbegin = community_neighs.begin();
-  list<Member>::iterator xend   = community_neighs.end();
-  list<Member>::iterator ybegin = c.community_neighs.begin();
-  list<Member>::iterator yend   = c.community_neighs.end();
-
-  while(true) {
-
-    // if this community neighbor list ends, then append all the remaining list
-    // of community c and update coherently.
-    if (xbegin == xend) {
-      community_neighs.splice(xend, c.community_neighs);
-
-      // Each appended element correspond to equation (10b).
-      for (; xbegin != community_neighs.end(); ++xbegin) {
-        // if (av[(*xbegin).id()] > 0)  // check if valid
-          // update deltaQ
-          (*xbegin).setdq( 
-              (*xbegin).dq() - (2 * av[community_id] * av[(*xbegin).id()])
-            );
-      }
-      break;
-    }
-
-    // if community c neighbor list ends, finish.
-    if (ybegin == yend) break;
-
-    if ((*xbegin).id() < (*ybegin).id()) {
-      // equation (10c)
-      // if (av[(*xbegin).id()] > 0) // check if valid
-        (*xbegin).setdq( 
-            (*xbegin).dq() - (2 * av[c.community_id] * av[(*xbegin).id()]) );
-      ++xbegin;
-    
-    } else if ((*ybegin).id() < (*xbegin).id()) {      
-
-      // equation (10b)
-      // if (av[(*ybegin).id()] > 0) // check if valid
-        (*ybegin).setdq( 
-            (*ybegin).dq() - (2 * av[community_id] * av[(*ybegin).id()]) 
-          );
-
-      community_neighs.splice(xbegin, c.community_neighs, ybegin);
-      ybegin = c.community_neighs.begin();
-
-    } else { // equal elements
-      // equation (10a)
-      // if (av[(*xbegin).id()] > 0)
-        (*xbegin).setdq( (*xbegin).dq() + (*ybegin).dq() );
-
-      ++xbegin;
-      c.community_neighs.pop_front();
-      ybegin = c.community_neighs.begin();
-    }
-  }
-}
-*/

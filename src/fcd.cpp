@@ -44,25 +44,6 @@ Pair::Pair (int i, int j, double q) {
 }
 
 
-double fcd_low_degree (vector<Community>& univ, vector<double>& av) {
-
-  int m_id;
-  double low_dQ = 0;
-  for (int i=0; i<univ.size(); i++) {
-    if (univ[i].community_degree == 1) {
-      if (univ[i].community_max != NULL) {
-        m_id = univ[i].community_max->id();
-        if (av[m_id] > 0) {
-          low_dQ += univ[i].community_max->dq();
-          merge_communities(univ[m_id], univ[i], av);
-        }
-      }
-    }
-  }
-  return low_dQ;
-}
-
-
 /* [header] function:  fileExists
  * ----------------------------------------------------------------------------
  * Check if a file exists.
@@ -178,8 +159,8 @@ int read_data_set (string filename, vector<Community>& univ) {
     return edges;
   }
  
-  // cout << "Preprocessed version of " << filename << " exists !!" << endl;
-  // read the processed file  
+  // cout << "Preprocessed version of " << filename << " exists" << endl;
+  // read the processed file
   ifstream prefile(outfilename);
   string line;
   int n, m, x, y;
@@ -243,11 +224,13 @@ double c_dq (int ki, int kj, int m) {
  */
 pair<vector<Community>, int> populate_universe (string filename) {
 
+#ifdef DEBUG
+  clock_t begin = clock();
+#endif
+
   int j, m;
   double cdq;
   vector<Community> univ;
-  clock_t begin = clock();
-
   m = read_data_set(filename, univ);
   
   for (int i=0; i<univ.size(); i++) {
@@ -263,11 +246,12 @@ pair<vector<Community>, int> populate_universe (string filename) {
       univ[i].community_size++;
     }
   }
-  
+
+#ifdef DEBUG 
   clock_t end = clock();
   double elapsed = double(end - begin) / CLOCKS_PER_SEC;
-  // cout << "Time to populate community universe: " << elapsed << " seconds" << endl;
-
+  cout << "Time to populate community universe: " << elapsed << " seconds" << endl;
+#endif
   return make_pair(univ, m);
 }
 
@@ -284,15 +268,20 @@ pair<vector<Community>, int> populate_universe (string filename) {
  */
 vector<double> populate_array (vector<Community>& univ, int m) {
 
+#ifdef DEBUG
   clock_t begin = clock();
+#endif
+
   vector<double> av;
   double k = (double)(0.5/m);
   for (int i=0; i<univ.size(); i++)
     av.push_back( univ[i].community_degree * k );
+
+#ifdef DEBUG
   clock_t end = clock();
   double elapsed = double(end - begin) / CLOCKS_PER_SEC;
-  // cout << "Time to populate double array: " << elapsed << " seconds" << endl;
-
+  cout << "Time to populate double array: " << elapsed << " seconds" << endl;
+#endif
   return av;
 }
 
@@ -309,7 +298,10 @@ vector<double> populate_array (vector<Community>& univ, int m) {
  */
 priority_queue<Pair> populate_heap (vector<Community>& univ, vector<double>& av) {
   
+#ifdef DEBUG
   clock_t begin = clock();
+#endif
+
   priority_queue<Pair> pq;
 
   for (int i=0; i<univ.size(); i++) {
@@ -320,10 +312,11 @@ priority_queue<Pair> populate_heap (vector<Community>& univ, vector<double>& av)
                          univ[i].community_max->dq())));
     }
   }
+#ifdef DEBUG
   clock_t end = clock();
   double elapsed = double(end - begin) / CLOCKS_PER_SEC;
-  // cout << "Time to populate max-heap: " << elapsed << " seconds" << endl;
-  
+  cout << "Time to populate max-heap: " << elapsed << " seconds" << endl;
+#endif
   return pq;
 }
 
@@ -339,16 +332,11 @@ priority_queue<Pair> populate_heap (vector<Community>& univ, vector<double>& av)
  */
 void merge_communities (Community& a, Community& b, vector<double>& av) {
 
-    // b.remove_element(a.community_id);
     // merge community neighborhood b into community a.
     a.c_union(b, av);
 
     // merge members lists.
     a.m_union(b);
-
-    // update degree.
-    // a.community_degree = a.community_neighs.size();
-    // b.community_degree = 0;
 
     // update sizes.
     a.community_size = a.community_members.size();
@@ -378,6 +366,36 @@ double init_Q (vector<double>& av) {
 }
 
 
+/* [] function:  fcd_low_degree
+ * ----------------------------------------------------------------------------
+ * Merge communities with only one neighbor.
+ *
+ * Args:
+ *    - univ : non-empty community vector.
+ *    - av   : non-empty double vector.
+ *
+ * Returns: partial Q value.
+ */
+double fcd_low_degree (vector<Community>& univ, vector<double>& av) {
+
+  int m_id;
+  double low_dQ = 0;
+
+  for (int i=0; i<univ.size(); i++) {
+    if (univ[i].community_degree == 1) {
+      if (univ[i].community_max != NULL) {
+        m_id = univ[i].community_max->id();
+        if (av[m_id] > 0) {
+          low_dQ += univ[i].community_max->dq();
+          merge_communities(univ[m_id], univ[i], av);
+        }
+      }
+    }
+  }
+  return low_dQ;
+}
+
+
 /* [header] function:  fcd
  * ----------------------------------------------------------------------------
  * Header function that run the fast community detection algorithm.
@@ -395,12 +413,11 @@ tuple<double, double> fcd (vector<Community>& univ,
         vector<double>& av, priority_queue<Pair>& heap, int m, int chunck_size) {
   
 	Pair p;
-	int x, y, sm, defm;
+	int x, y, sm;
   double elapsed, top_element;
   clock_t begin, end;
 
   double Q = init_Q(av);
-  int iter = 0;
 
   priority_queue<Pair> queue;
   // int chunck_size      = 32;
@@ -487,9 +504,10 @@ tuple<double, double> fcd (vector<Community>& univ,
 
       end = clock();
       elapsed = double(end - begin) / CLOCKS_PER_SEC;
-      // cout << "x: " << x << " y: " << y << " time: " << elapsed << endl; 
+#ifdef DEBUG
+      cout << "x: " << x << " y: " << y << " time: " << elapsed << endl;
+#endif
   	}
-    iter++;
   }
 
   clock_t end_total = clock();

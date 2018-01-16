@@ -24,6 +24,8 @@
 #ifndef __FCD_H
 #define __FCD_H
 
+// #define DEBUG
+
 #include <tuple>
 #include <queue>
 #include "Community.h"
