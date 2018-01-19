@@ -72,7 +72,8 @@ ostream& operator << (ostream& outputStream, Community& c) {
  * Sort neighbors list based on member order.
  */
 void Community::sort_pairs () {
-  community_neighs.sort(member_cmp);
+  if (community_neighs.size() > 1) community_neighs.sort(member_cmp);
+  if (community_members.size() > 1) community_members.sort(member_cmp);
 }
 
 /* [header] function:  contains

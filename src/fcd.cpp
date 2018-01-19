@@ -513,5 +513,7 @@ tuple<double, double> fcd (vector<Community>& univ,
   clock_t end_total = clock();
   double elapsed_total = double(end_total - begin_total) / CLOCKS_PER_SEC;
 
+  for (int i=0; i<univ.size(); i++) univ[i].sort_pairs();
+
   return make_tuple(elapsed_total, Q);
 }

@@ -45,9 +45,9 @@ public:
   inline double dq () {return member_dq;}
   inline void setdq (double newdq) {member_dq = newdq;}
 
-private:
-  int member_id;     // community member id
+private:  
   double member_dq;  // delta Q of (community, member)
+  int member_id;     // community member id
 
 };
 

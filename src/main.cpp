@@ -28,6 +28,7 @@
 
 #include "fcd.h"
 
+
 /* simple stats */
 tuple<int, int> stats (vector<Community>& univ) {
   int n_of_singleton   = 0;
@@ -44,36 +45,28 @@ tuple<int, int> stats (vector<Community>& univ) {
 
 /* [] function:  community_ranking
  * ----------------------------------------------------------------------------
- * Sort and select first r communities by size.
+ * Sort communities by IDs.
  *
  * Args:
  *    - univ : non-empty community vector.
- *    - r    : number of communities to be retrieved.
  *
- * Returns: sorted vector of community IDs.
+ * Returns: sorted vector of community IDs and sizes.
  */
-vector<int> community_ranking (vector<Community>& univ, int r) {
+vector< pair<int,int> > community_ranking (vector<Community>& univ) {
 #ifdef DEBUG
   clock_t begin = clock();
 #endif
 
 	vector< pair<int,int> > vect;
-	for (int i=0; i<univ.size(); i++) {
-		if (univ[i].community_size > 1) {
-			vect.push_back( make_pair(univ[i].community_id, univ[i].community_size) );
-		}
-	}
+	for (int i=0; i<univ.size(); i++)
+    if (univ[i].community_size > 0)
+		  vect.push_back( make_pair(univ[i].community_id, univ[i].community_size) );		
 
 	sort(vect.begin(), vect.end(), 
     [](const pair<int,int>& a, const pair<int,int>& b) -> bool {
       // lambda function
-      return a.second > b.second;
+      return a.first < b.first;
   });
-
-	vector<int> ratings;
-	for (int j=0; j<r; j++) {
-		ratings.push_back(vect[j].first);
-	}
 
 #ifdef DEBUG
   clock_t end = clock();
@@ -81,61 +74,83 @@ vector<int> community_ranking (vector<Community>& univ, int r) {
   cout << "Time to rank communities: " << elapsed << " seconds" << endl;
 #endif
 
-	return ratings;
+	return vect;
+}
+
+bool check_member (int q, Community& c) {
+  if (q == c.community_id) return true;
+  for (list<Member>::iterator it=c.community_members.begin(); 
+          it!=c.community_members.end(); it++) {
+    if (it->id() > q) return false;
+    if (it->id() == q) return true;
+  }
+  return false;
+}
+
+bool check_link (vector<Community>& dummy, Community& a, Community& b) {
+  int b_min_member = b.community_members.front().id();
+  int b_max_member = b.community_members.back().id();
+
+  for (list<Member>::iterator it=dummy[a.community_id].community_neighs.begin();
+          it!=dummy[a.community_id].community_neighs.end(); it++) {
+    
+    if ( b_min_member <= it->id() <= b_max_member ) {
+      if (it->id() == b_max_member || it->id() == b_min_member) return true;
+      if (check_member(it->id(), b)) return true;
+    }
+  }
+
+  for (list<Member>::iterator it1=a.community_members.begin(); 
+          it1!=a.community_members.end(); it1++) {
+    for (list<Member>::iterator it2=dummy[it1->id()].community_neighs.begin();
+            it2!=dummy[it1->id()].community_neighs.end(); it2++) {
+      
+      if ( b_min_member <= it2->id() <= b_max_member ) {
+        if (it2->id() == b_max_member || it2->id() == b_min_member) return true;
+        if (check_member(it2->id(), b)) return true;
+      }
+    }
+  }
+  return false;
 }
 
 
-bool check_member (vector<Community>& univ, vector<int> ratings, int cm, int mbm) {
-	for (int i=0; i<ratings.size(); i++) {
-		if (ratings[i] == cm) continue;
-		for (list<Member>::iterator it=univ[ratings[i]].community_members.begin(); 
-      				it!=univ[ratings[i]].community_members.end(); it++) {
-			if (it->id() == mbm) return true;
-		}
-	}
-	return false;
-}
+void communities_to_csv (vector<Community>& univ, vector< pair<int,int> >& comm, string filename) {
 
-
-void communities_to_csv (vector<Community>& univ, vector<int> ratings, 
-				vector<double>& av, string filename) {
+#ifdef DEBUG
+  clock_t begin = clock();
+#endif
 
 	cout << "Converting to CSV ... Start" << endl;
-	string r = to_string(ratings.size());
-  ofstream vertexfile(filename + "_vertices_" + r + ".csv");
+
+  ofstream vertexfile(filename + "_vertices.csv");
   if (vertexfile.is_open()) {
-		vertexfile << "Id," << "Community\n";
-		for (int i=0; i<ratings.size(); i++) {
-			for (list<Member>::iterator it=univ[ratings[i]].community_members.begin(); 
-      				it!=univ[ratings[i]].community_members.end(); it++) {
-				vertexfile << it->id() << "," << ratings[i] << "\n";
-			}
-		}		
-		vertexfile.close();  	
+		vertexfile << "Id," << "Size\n";
+		for (int i=0; i<comm.size(); i++)			
+			vertexfile << comm[i].first << "," << comm[i].second << "\n";				
+		vertexfile.close();
   } else {
     cerr << "Error opening CSV output file." << endl;
     exit(1);
   }
 
-  int parent;
-  ofstream edgefile(filename + "_edges_" + r + ".csv");
+  int m, ind, cRef;
+  vector<Community> dummy;
+  tie(dummy, m) = populate_universe(filename);
+  // IDEA 1: merge members neighbors and then check for all
+
+  ofstream edgefile(filename + "_edges.csv");  // create edge file
   if (edgefile.is_open()) {
-  	edgefile << "Source,Target\n";
-  	for (int i=0; i<ratings.size(); i++) {
-  		for (list<Member>::iterator it=univ[ratings[i]].community_members.begin(); 
-      				it!=univ[ratings[i]].community_members.end(); it++) {
-  			if (it->id() != ratings[i]) {
-  				parent = (int) abs(av[it->id()]);
-  				edgefile << it->id() << "," << parent << "\n";
-  			}
-  		}
-  		
-  		for (list<Member>::iterator it=univ[ratings[i]].community_neighs.begin(); 
-      				it!=univ[ratings[i]].community_neighs.end(); it++) {
-  			if (check_member(univ, ratings, ratings[i], it->id()))
-  				edgefile << it->id() << "," << ratings[i] << "\n";
-  		}  		
-  	}
+  	edgefile << "Source,Target\n";  // first row with labels
+    for (int i=0; i<comm.size()/4; i++) {
+      ind = comm[i].first;
+      cout << "checking community " << i << " out of " << comm.size() << "\n"; 
+      for (int j=0; j<comm.size(); j++) {
+        if (comm[j].first == ind) continue;
+        if (check_link(dummy, univ[ind], univ[comm[j].first]))
+          vertexfile << ind << "," << comm[i].first << "\n";
+      }
+    }
   	edgefile.close();
   } else {
   	cerr << "Error opening CSV output file." << endl;
@@ -143,6 +158,11 @@ void communities_to_csv (vector<Community>& univ, vector<int> ratings,
   }
 
   cout << "Converting to CSV ... End" << endl;
+#ifdef DEBUG
+  clock_t end = clock();
+  double elapsed = double(end - begin) / CLOCKS_PER_SEC;
+  cout << "Time to make CSV files: " << elapsed << " seconds" << endl;
+#endif
 }
 
 
@@ -197,12 +217,12 @@ int main(int argc, char *argv[]) {
   myfile.close();
 
   cout << "\nNumber of vertices: " << univ.size() << "\n";
-  cout << "Number of edges: " << m << "\n\n";
+  cout << "Number of edges: " << m << "\n";
   cout << "Total time: " << total_time << "\n";
   cout << "Max Q: " << Q << "\n" << endl;
 
-  vector<int> ratings = community_ranking(univ, 8);
-  // communities_to_csv(univ, ratings, arrv, filename);
+  vector< pair<int,int> > ranks = community_ranking(univ);
+  communities_to_csv(univ, ranks, filename);
 
  	exit(0);
 }

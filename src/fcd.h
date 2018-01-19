@@ -24,7 +24,7 @@
 #ifndef __FCD_H
 #define __FCD_H
 
-// #define DEBUG
+#define DEBUG
 
 #include <tuple>
 #include <queue>
