@@ -207,10 +207,12 @@ void Community::c_union (Community& c, vector<double>& av) {
 
     // if community c neighbor list ends, finish.
     if (ybegin == yend) {
-      for (; xbegin != xend; xbegin++) {
+      for (; xbegin != xend; ) {
         if ((*xbegin).id() == c.community_id) {
-          xbegin = community_neighs.erase(xbegin);
-          break;
+          xbegin = community_neighs.erase(xbegin);          
+        } else {
+          (*xbegin).setdq((*xbegin).dq() - (2 * av[c.community_id] * av[(*xbegin).id()]));
+          xbegin++;
         }
       }
       break;

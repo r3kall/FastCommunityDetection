@@ -488,19 +488,36 @@ tuple<double, double> fcd (vector<Community>& univ,
 
       // update Q
       Q += univ[x].community_max->dq();
+      
+      if ( (univ[x].community_size + univ[x].community_degree) > (univ[y].community_size + univ[y].community_degree) ) {
+        // if x and y are valid communities, merge them
+        merge_communities(univ[x], univ[y], av);
 
-      // if x and y are valid communities, merge them
-      merge_communities(univ[x], univ[y], av);
+        // update maximum delta Q member of community x
+        sm = univ[x].scan_max(av);
+        if (sm > 0) { 
+          // insert new max in the heap
+          heap.push(*(new Pair(univ[x].community_id, 
+                               univ[x].community_max->id(),
+                               univ[x].community_max->dq()
+                              )));
+        }
+      } else {
+        // if x and y are valid communities, merge them
+        merge_communities(univ[y], univ[x], av);
 
-      // update maximum delta Q member of community x
-      sm = univ[x].scan_max(av);
-      if (sm > 0) { 
-        // insert new max in the heap
-        heap.push(*(new Pair(univ[x].community_id, 
-                             univ[x].community_max->id(),
-                             univ[x].community_max->dq()
-                            )));
+        // update maximum delta Q member of community x
+        sm = univ[y].scan_max(av);
+        if (sm > 0) { 
+          // insert new max in the heap
+          heap.push(*(new Pair(univ[y].community_id, 
+                               univ[y].community_max->id(),
+                               univ[y].community_max->dq()
+                              )));
+        }
       }
+
+      
 
       end = clock();
       elapsed = double(end - begin) / CLOCKS_PER_SEC;
