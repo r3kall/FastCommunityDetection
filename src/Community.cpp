@@ -22,16 +22,17 @@
  */
 
 #include "Community.h"
+using namespace std;
 
 
 Community::Community() {
   id = -1;
-  last = 0;
+  stamp = 0;
 }
 
 Community::Community(int idx) {
   id = idx;
-  last = 0;
+  stamp = 0;
 }
 
 Community::~Community() {  

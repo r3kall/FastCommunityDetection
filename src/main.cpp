@@ -25,8 +25,10 @@
 #include <fstream> 
 #include <sstream>
 #include <algorithm>
+#include <chrono>
 
 #include "fcd.h"
+using namespace std;
 
 #define OUTPUT
 
@@ -35,14 +37,14 @@ tuple<int,int,int,int> stats (vector<Community>& univ, vector<double> av) {
 	int n_of_communities = 0;
   int max_size = 0;
   int sc;
-  int cnt;
+  int cnt = 0;
   double mean_size = 0;
 
 	for (int c=0; c<univ.size(); c++) {
-    if (av[c] > 0) {
-      cnt++;
-      sc = univ[c].members();
-      if (sc == 1) n_of_singleton++;
+    sc = univ[c].members();
+    if (av[c] > 0 && sc > 0) {
+      cnt++;      
+      if (sc < 3) n_of_singleton++;
       else n_of_communities++;
       if (sc > max_size) max_size=sc;
       mean_size+=sc;
@@ -65,6 +67,11 @@ bool run(string filename, int mod, int l_scope) {
   int                  m;     /* Number of edges */
 /* ========================================================================= */
 
+#ifdef OUTPUT
+  cout << "============================================================\n";
+  if (mod == 1) cout << "CNM-standard\n\n";
+  else cout << "CNM-agglomerative\n\n";
+#endif
   m = init_universe(univ, filename);
   init_array(arrv, univ, m);
   init_heap(heap, univ, arrv);
@@ -88,24 +95,21 @@ bool run(string filename, int mod, int l_scope) {
     myfile << "CNM-agglomerative  a-factor: " << l_scope << " ";
 
   myfile << "maxQ " << sQ << " total_time " << total_time << " ";
-  myfile << "#singleton " << sngl << " #communities " << cms << " ";
+  myfile << "#minors " << sngl << " #communities " << cms << " ";
   myfile << "max size: " << maxs << " mean size: " << mns << "\n";
   myfile.close();
 
 #ifdef OUTPUT
-  cout << "\n============================================================\n";
-  if (mod == 1) cout << "CNM-standard\n";
-  else cout << "CNM-agglomerative\n";
   cout << "# vertices: " << univ.size() << "\n";
   cout << "# edges: " << m << "\n";
   cout << "total time: " << total_time << " seconds\n";
   cout << "max Q: " << sQ << "\n";
-  cout << "# singleton: " << sngl << "\t# communities: " << cms << "\n";
+  cout << "#minors: " << sngl << "\t#communities: " << cms << "\n";
   cout << "max size: " << maxs << " mean size: " << mns << "\n";
-  cout << "modularity: " << modularity(filename, univ, arrv)-Q << "\n";
+  //cout << "modularity: " << modularity(filename, univ, arrv)-Q << "\n";
   cout << "============================================================\n\n";
 #endif  
-  return (univ.size()<500000 && m<3000000);
+  return (univ.size()<600000 && m<3000000);
 }
 
 
@@ -141,6 +145,6 @@ int main(int argc, char *argv[]) {
 	}
 
   bool flag = run(filename, 2, l_scope);
-  if (flag) run(filename, 1, 0);  
- 	exit(0);
+  if (flag) run(filename, 1, 0);
+  exit(0);
 }

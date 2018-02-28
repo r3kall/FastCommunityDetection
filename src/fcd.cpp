@@ -28,7 +28,7 @@
 #include <ctime>
 
 #include "fcd.h"
-
+using namespace std;
 
 /* [header] function:  fileExists
  * ----------------------------------------------------------------------------
@@ -216,7 +216,7 @@ int init_universe (vector<Community>& univ, string filename) {
 #ifdef DEBUG 
   clock_t end = clock();
   double elapsed = double(end - begin) / CLOCKS_PER_SEC;
-  cout << "Time to populate community universe: " << elapsed << " seconds" << endl;
+  cout << "Time to populate universe: " << elapsed << " seconds" << endl;
 #endif
   return m;
 }
@@ -262,11 +262,10 @@ void init_heap (MaxHeap& h, vector<Community>& univ, vector<double>& av) {
 #ifdef DEBUG
   clock_t begin = clock();
 #endif
-  for (int i=0; i<univ.size(); i++) {
-    univ[i].cmax = NULL;
+  for (int i=0; i<univ.size(); i++)
     if (av[i] > 0 && univ[i].scan_max(av))
       h.push(i, univ[i].cmax->k, univ[i].cmax->dq, 0);
-  }
+
 #ifdef DEBUG
   clock_t end = clock();
   double elapsed = double(end - begin) / CLOCKS_PER_SEC;
@@ -326,7 +325,7 @@ double modularity(string filename, vector<Community>& univ, vector<double>& av) 
 
 
 bool convergence(vector<Community>& univ, vector<double>& av, MaxHeap& h) {
-  for (auto&& c:univ) c.last = 0;
+  for (auto&& c:univ) c.stamp = 0;
   h.clear();
   init_heap(h, univ, av);
   return h.empty();
@@ -349,22 +348,27 @@ void shrink_all(vector<Community>& univ) {
 }
 
 
-bool validity(Community& a, Community& b, int relative, vector<double>& av, MaxHeap& h, int& actual) {
+bool validity(Community& a, Community& b, uint64_t stamp, 
+              vector<double>& av, MaxHeap& h) {
   if (av[a.id] <= 0) return false;
 
   if (av[b.id] <= 0) {
-    if (a.scan_max(av))
-      h.push(a.id, a.cmax->k, a.cmax->dq, ++actual);
-    a.last = actual;
+    if (a.stamp == stamp) {
+      uint64_t st = timestamp();
+      if (a.scan_max(av))
+        h.push(a.id, a.cmax->k, a.cmax->dq, st);
+      a.stamp = st;
+    }
     return false;
   }
 
-  if (a.last != relative) return false;
+  if (a.stamp != stamp) return false;
   return true;
 }
 
 
-void merge(Community& a, Community& b, vector<double>& av, MaxHeap& h, int iter) {
+void merge(Community& a, Community& b, vector<double>& av, MaxHeap& h) {
+  uint64_t st = timestamp();
   if (a.size() >= b.size()) {
     b.remove(a.id);
     a.merge(b, av);
@@ -372,8 +376,8 @@ void merge(Community& a, Community& b, vector<double>& av, MaxHeap& h, int iter)
     av[a.id] += av[b.id];
     av[b.id] = -(a.id);
     if (a.scan_max(av))
-      h.push(a.id, a.cmax->k, a.cmax->dq, iter);
-    a.last = iter;
+      h.push(a.id, a.cmax->k, a.cmax->dq, st);
+    a.stamp = st;
   } else {
     a.remove(b.id);
     b.merge(a, av);
@@ -381,18 +385,17 @@ void merge(Community& a, Community& b, vector<double>& av, MaxHeap& h, int iter)
     av[b.id] += av[a.id];
     av[a.id] = -(b.id);
     if (b.scan_max(av))
-      h.push(b.id, b.cmax->k, b.cmax->dq, iter);
-    b.last = iter;
+      h.push(b.id, b.cmax->k, b.cmax->dq, st);
+    b.stamp = st;
   }
 }
 
 
-pair<double, double> cnm (double Q,
-                          vector<Community>& univ, 
-                          vector<double>& av, 
-                          MaxHeap& heap) {
+pair<double, double> cnm (double Q, vector<Community>& univ, 
+                          vector<double>& av, MaxHeap& heap) {
   
-  int x, y, rel;
+  int x, y;
+  uint64_t stamp;
   double elapsed;
   clock_t begin, end;
 
@@ -402,19 +405,18 @@ pair<double, double> cnm (double Q,
   do {    
     while (!heap.empty()) {
       // pop candidates communities
-      heap.pop(x, y, rel);
+      heap.pop(x, y, stamp);
       // check validity
-      if (!validity(univ[x], univ[y], rel, av, heap, iter)) continue;
+      if (!validity(univ[x], univ[y], stamp, av, heap)) continue;
 
 #ifdef DEBUG
+      iter++;
       begin = clock();
 #endif
-      // update iteration
-      iter++;
       // update Q
       sQ += univ[x].cmax->dq;
       // start merge sequence
-      merge(univ[x], univ[y], av, heap, iter);
+      merge(univ[x], univ[y], av, heap);
 
 #ifdef DEBUG
       end = clock();
@@ -449,13 +451,12 @@ pair<double, double> cnm (double Q,
  *
  * Returns: tuple of <total_time, Q>
  */
-pair<double, double> cnm2 (double Q,
-                           vector<Community>& univ, 
-                           vector<double>& av, 
-                           MaxHeap& heap,
+pair<double, double> cnm2 (double Q, vector<Community>& univ, 
+                           vector<double>& av, MaxHeap& heap,
                            int l_scope) {
   
-	int x, y, l, rel;
+	int x, y, l;
+  uint64_t stamp;
   double elapsed;
   clock_t begin, end;
 
@@ -469,8 +470,8 @@ pair<double, double> cnm2 (double Q,
     while (!heap.empty() || candidates.size()>0) {
       l=0;
       while (!heap.empty() && l<l_scope) {
-        heap.pop(x, y, rel);           
-        if (validity(univ[x], univ[y], rel, av, heap, iter)) {
+        heap.pop(x, y, stamp);           
+        if (validity(univ[x], univ[y], stamp, av, heap)) {
           candidates.push_back(make_pair(x,y));
           l++;
         }
@@ -484,11 +485,11 @@ pair<double, double> cnm2 (double Q,
         touched[y] = true;
         
   #ifdef DEBUG
-        begin = clock();
-  #endif
         iter++;
+        begin = clock();
+  #endif    
         sQ += univ[x].cmax->dq;
-        merge(univ[x], univ[y], av, heap, iter);
+        merge(univ[x], univ[y], av, heap);
                     
   #ifdef DEBUG
         end = clock();
@@ -509,11 +510,8 @@ pair<double, double> cnm2 (double Q,
       }  // end second for loop
       candidates.clear();  // remove all candidates
     }  // end first while loop
-    l_scope = 2;
+    l_scope = 4;
   } while (!convergence(univ, av, heap));
-
-  //if (!convergence(univ, av, heap))
-    //tie(ignore, sQ) = cnm(sQ, univ, av, heap);
 
   clock_t end_total = clock();
   double elapsed_total = double(end_total - begin_total) / CLOCKS_PER_SEC;

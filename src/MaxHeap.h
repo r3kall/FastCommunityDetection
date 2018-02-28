@@ -24,16 +24,15 @@
 #define __MAXHEAP_H
 
 #include <queue>
-// #include <utility>
 
 
 typedef struct element {
-  double dq;
-  int iter;
+  uint64_t stamp;
+  double dq;  
   int i;
   int j;
-  element(int a, int b, double d, int it): i(a), j(b), dq(d), iter(it) {}
-  ~element() {}  
+  element(int a, int b, double d, uint64_t st): i(a), j(b), dq(d), stamp(st) {}
+  ~element() {}
 } Element;  // 24B
 
 inline bool operator <(const struct element& e1, const struct element& e2) {
@@ -45,12 +44,12 @@ class MaxHeap {
 public:
   inline int  size() {return pq.size();}  
   inline bool empty() {return pq.empty();}
-  inline void push(int i, int j, double dq, int it) {pq.emplace(i, j, dq, it);}
+  inline void push(int i, int j, double dq, uint64_t st) {pq.emplace(i, j, dq, st);}
 
-  void pop(int& a, int& b, int& c) {
+  void pop(int& a, int& b, uint64_t& c) {
     a = pq.top().i;
     b = pq.top().j;
-    c = pq.top().iter;
+    c = pq.top().stamp;
     pq.pop();
   }
 

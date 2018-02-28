@@ -28,20 +28,20 @@
 #include "Community.h"
 #include "MaxHeap.h"
 
-// #define DEBUG
+#define DEBUG
 
 // COMMONS
-bool   fileExists(const string&);
-int    init_universe(vector<Community>&, string);
-void   init_array(vector<double>&, vector<Community>&, int);
-void   init_heap(MaxHeap&, vector<Community>&, vector<double>&);
-double init_Q(vector<double>&);
-void   fill(vector<Community>&, vector<double>&);
-void   shrink_all(vector<Community>&);
-double modularity(string, vector<Community>&, vector<double>&);
+bool   fileExists(const std::string&);
+int    init_universe(std::vector<Community>&, std::string);
+void   init_array(std::vector<double>&, std::vector<Community>&, int);
+void   init_heap(MaxHeap&, std::vector<Community>&, std::vector<double>&);
+double init_Q(std::vector<double>&);
+void   fill(std::vector<Community>&, std::vector<double>&);
+void   shrink_all(std::vector<Community>&);
+double modularity(std::string, std::vector<Community>&, std::vector<double>&);
 
 // ALGORITHMS
-pair<double,double> cnm(double, vector<Community>&, vector<double>&, MaxHeap&);
-pair<double,double> cnm2(double, vector<Community>&, vector<double>&, MaxHeap&, int);
+std::pair<double,double> cnm(double, std::vector<Community>&, std::vector<double>&, MaxHeap&);
+std::pair<double,double> cnm2(double, std::vector<Community>&, std::vector<double>&, MaxHeap&, int);
 
 #endif // __FCD_H

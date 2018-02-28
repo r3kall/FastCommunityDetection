@@ -25,9 +25,9 @@
 #define __COMMUNITY_H
 
 #include <list>
+#include <chrono>
 #include <vector>
 #include <iostream>
-using namespace std;
 
 
 typedef struct node {
@@ -49,29 +49,34 @@ typedef struct node {
 class Community {
 
 public:
-  list<CNode> cmembers;  // list of members
-  list<CNode> clist;     // lists of neighbors
-  CNode*      cmax;      // maximum dQ
-  int         last;      // last iteration where cmax is modified
-  int         id;        // community id  
+  std::list<CNode> cmembers;  // list of members
+  std::list<CNode> clist;     // lists of neighbors
+  CNode*      cmax;   // maximum dQ
+  uint64_t    stamp;  // timestamp of last cmax
+  int         id;     // community id
   
   Community();     // default constructor (for vector allocation)
   Community(int);  // custom constructor
   ~Community();    // default deconstructor
 
-  friend ostream& operator <<(ostream&, Community&);
+  friend std::ostream& operator <<(std::ostream&, Community&);
 
-  inline int degree()  {return clist.size();}
-  inline int members() {return cmembers.size();}
-  inline int size()    {return clist.size()+cmembers.size();}
+  inline unsigned int degree()  {return clist.size();}
+  inline unsigned int members() {return cmembers.size();}
+  inline unsigned int size()    {return clist.size()+cmembers.size();}
 
-  bool add(int,double);                    // Add node in community
-  bool scan_max(vector<double>&);          // Find member with maximum dQ
+  bool add(int,double);                 // Add node in community
+  bool scan_max(std::vector<double>&);  // Find member with maximum dQ
 
-  void remove(int);                        // Remove node with specific key
-  void shrink(vector<double>&);            // Remove obsolete nodes
-  void merge(Community&,vector<double>&);  // Merge two communities
+  void remove(int);                             // Remove specific node
+  void shrink(std::vector<double>&);            // Remove obsolete nodes
+  void merge(Community&,std::vector<double>&);  // Merge two communities
 
-};  // 64B
+};  // 72B
+
+inline uint64_t timestamp() {
+    return std::chrono::duration_cast<std::chrono::microseconds>
+              (std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+}
 
 #endif // __COMMUNITY_H
