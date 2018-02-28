@@ -109,7 +109,6 @@ void Community::shrink(vector<double>& av) {
 void Community::merge(Community& cm, vector<double>& av) {
   list<CNode>::iterator ax = clist.begin();
   list<CNode>::iterator bx = cm.clist.begin();
-  list<CNode>::iterator tmp;
   while (1) {
     if (ax == clist.end()) {
       // update from bx to by, equation (10b)
@@ -123,11 +122,8 @@ void Community::merge(Community& cm, vector<double>& av) {
     if (bx == cm.clist.end()) {
       // update from ax to ay, equation (10c)
       for (;ax!=clist.end();) {
-        if (ax->k == cm.id) {
-          tmp = next(ax);
-          cmembers.splice(cmembers.end(), clist, ax);
-          ax = tmp;
-        }
+        if (ax->k == cm.id)
+          ax = clist.erase(ax);
         else {
           ax->dq -= 2.0*av[cm.id]*av[ax->k];
           ++ax;
@@ -137,9 +133,7 @@ void Community::merge(Community& cm, vector<double>& av) {
     }
 
     if (ax->k == cm.id) {
-      tmp = next(ax);
-      cmembers.splice(cmembers.end(), clist, ax);
-      ax = tmp;
+      ax = clist.erase(ax);
       continue;
     }
 

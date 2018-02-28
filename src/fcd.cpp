@@ -293,37 +293,6 @@ double init_Q (vector<double>& av) {
 }
 
 
-double modularity(string filename, vector<Community>& univ, vector<double>& av) {
-  vector<Community> origin;  
-  int m = read_data_set(filename, origin);
-  vector<int> owners(univ.size(), -1);
-  for (int i=0; i<univ.size(); i++) {
-    if (av[i]>0 && univ[i].members()>0) {
-      owners[i]=i;
-      for (auto it=univ[i].cmembers.begin(); it!=univ[i].cmembers.end(); ++it)
-        owners[it->k] = i;
-    }
-  }
-
-  vector<int> internal(univ.size(), 0);
-  vector<int> external(univ.size(), 0);
-  for (int i=0; i<univ.size(); i++)
-    if (av[i] > 0 && univ[i].members()>0)
-      for (auto it=univ[i].cmembers.begin(); it!=univ[i].cmembers.end(); ++it) {
-        external[i] += origin[it->k].degree();
-        for (auto jt=origin[it->k].clist.begin(); jt!=origin[it->k].clist.end(); ++jt)
-          if (owners[jt->k] == i && it->k<jt->k) internal[i]++;
-      }
-
-  double mod = 0.0;
-  for (int i=0; i<univ.size(); i++)
-    if (av[i] > 0 && univ[i].members()>0)
-      mod += 2.0*((internal[i]/double(2*m)) - pow( av[i], 2.0 ));
-
-  return mod;
-}
-
-
 bool convergence(vector<Community>& univ, vector<double>& av, MaxHeap& h) {
   for (auto&& c:univ) c.stamp = 0;
   h.clear();
@@ -368,22 +337,32 @@ bool validity(Community& a, Community& b, uint64_t stamp,
 
 
 void merge(Community& a, Community& b, vector<double>& av, MaxHeap& h) {
+  // insert new member
+  a.cmembers.emplace_back(a.cmax->k, a.cmax->dq);
+  // get timestamp
   uint64_t st = timestamp();
-  if (a.size() >= b.size()) {
+
+  if (a.degree() >= b.degree()) {
+    // merge members
+    a.cmembers.splice(a.cmembers.end(), b.cmembers);
+    // remove self-edge and merge
     b.remove(a.id);
     a.merge(b, av);
-    a.cmembers.splice(a.cmembers.end(), b.cmembers);
+    // update av
     av[a.id] += av[b.id];
     av[b.id] = -(a.id);
+    // update cmax and timestamp
+    b.cmax = NULL;
     if (a.scan_max(av))
       h.push(a.id, a.cmax->k, a.cmax->dq, st);
     a.stamp = st;
   } else {
-    a.remove(b.id);
-    b.merge(a, av);
     b.cmembers.splice(b.cmembers.end(), a.cmembers);
+    a.remove(b.id);
+    b.merge(a, av);    
     av[b.id] += av[a.id];
     av[a.id] = -(b.id);
+    a.cmax = NULL;
     if (b.scan_max(av))
       h.push(b.id, b.cmax->k, b.cmax->dq, st);
     b.stamp = st;
@@ -487,7 +466,7 @@ pair<double, double> cnm2 (double Q, vector<Community>& univ,
   #ifdef DEBUG
         iter++;
         begin = clock();
-  #endif    
+  #endif  
         sQ += univ[x].cmax->dq;
         merge(univ[x], univ[y], av, heap);
                     

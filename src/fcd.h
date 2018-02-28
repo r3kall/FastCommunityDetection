@@ -38,7 +38,6 @@ void   init_heap(MaxHeap&, std::vector<Community>&, std::vector<double>&);
 double init_Q(std::vector<double>&);
 void   fill(std::vector<Community>&, std::vector<double>&);
 void   shrink_all(std::vector<Community>&);
-double modularity(std::string, std::vector<Community>&, std::vector<double>&);
 
 // ALGORITHMS
 std::pair<double,double> cnm(double, std::vector<Community>&, std::vector<double>&, MaxHeap&);

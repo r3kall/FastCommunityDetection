@@ -56,6 +56,16 @@ tuple<int,int,int,int> stats (vector<Community>& univ, vector<double> av) {
 }
 
 
+double triv(vector<Community>& univ, double iQ) {
+  double res = 0.0;
+  for (auto&& c:univ)
+    if (c.members() > 0)
+      for (auto&& m:c.cmembers)
+        res += m.dq;
+  return res-iQ;
+}
+
+
 bool run(string filename, int mod, int l_scope) {
 /* ========================================================================= */
   vector<double>       arrv;  /* Array of elements A (see paper). If a value
@@ -106,7 +116,6 @@ bool run(string filename, int mod, int l_scope) {
   cout << "max Q: " << sQ << "\n";
   cout << "#minors: " << sngl << "\t#communities: " << cms << "\n";
   cout << "max size: " << maxs << " mean size: " << mns << "\n";
-  //cout << "modularity: " << modularity(filename, univ, arrv)-Q << "\n";
   cout << "============================================================\n\n";
 #endif  
   return (univ.size()<600000 && m<3000000);
@@ -145,6 +154,6 @@ int main(int argc, char *argv[]) {
 	}
 
   bool flag = run(filename, 2, l_scope);
-  if (flag) run(filename, 1, 0);
+  // if (flag) run(filename, 1, 0);
   exit(0);
 }
