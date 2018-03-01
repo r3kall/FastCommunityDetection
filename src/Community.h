@@ -33,8 +33,9 @@
 typedef struct node {
   double dq;
   int    k;
+  bool   member;
 
-  node(int a, double b): k(a), dq(b) {}
+  node(int a, double b, bool c): k(a), dq(b), member(c) {}
   ~node() {}
   bool operator <(const node& n) const {return k<n.k;}
 } CNode;  // 16B
@@ -49,8 +50,7 @@ typedef struct node {
 class Community {
 
 public:
-  std::list<CNode> cmembers;  // list of members
-  std::list<CNode> clist;     // lists of neighbors
+  std::list<CNode> clist;  // list of members
   CNode*      cmax;   // maximum dQ
   uint64_t    stamp;  // timestamp of last cmax
   int         id;     // community id
@@ -61,9 +61,10 @@ public:
 
   friend std::ostream& operator <<(std::ostream&, Community&);
 
-  inline unsigned int degree()  {return clist.size();}
-  inline unsigned int members() {return cmembers.size();}
-  inline unsigned int size()    {return clist.size()+cmembers.size();}
+  inline unsigned int size() {return clist.size();}
+
+  unsigned int degree();
+  unsigned int members();
 
   bool add(int,double);                 // Add node in community
   bool scan_max(std::vector<double>&);  // Find member with maximum dQ
@@ -72,7 +73,7 @@ public:
   void shrink(std::vector<double>&);            // Remove obsolete nodes
   void merge(Community&,std::vector<double>&);  // Merge two communities
 
-};  // 72B
+};  // 48B
 
 inline uint64_t timestamp() {
     return std::chrono::duration_cast<std::chrono::microseconds>

@@ -31,6 +31,7 @@
 using namespace std;
 
 #define OUTPUT
+//#define COMP
 
 tuple<int,int,int,int> stats (vector<Community>& univ, vector<double> av) {
   int n_of_singleton   = 0;
@@ -56,17 +57,75 @@ tuple<int,int,int,int> stats (vector<Community>& univ, vector<double> av) {
 }
 
 
-double triv(vector<Community>& univ, double iQ) {
-  double res = 0.0;
-  for (auto&& c:univ)
-    if (c.members() > 0)
-      for (auto&& m:c.cmembers)
-        res += m.dq;
-  return res-iQ;
+vector<int> top(vector<Community>& univ, int s) {
+  vector<int> res;  
+  vector<pair<int,int>> order;
+  for (auto&& c: univ)
+    if (c.size() > 0)
+      order.push_back(make_pair(c.size(), c.id));
+
+  sort(order.begin(), order.end());
+  reverse(order.begin(), order.end());
+  for (int i=0; i<s; i++)
+    res.push_back(order[i].second);
+
+  return res;
 }
 
 
-bool run(string filename, int mod, int l_scope) {
+void SizeToCSV(string filename, bool ms, vector<Community>& univ) {
+  ofstream myfile;
+  if (ms) myfile.open (filename + "_info_ms.csv");
+  else myfile.open (filename + "_info_std.csv");
+  myfile << "id,size\n";
+  for (auto&& c: univ)
+    if (c.size() > 0)
+      myfile << c.id << "," << c.members() << "\n";
+  myfile.close();
+}
+
+
+void StructureToSCV(string filename, bool ms, vector<Community>& univ) {
+  vector<int> own(univ.size(), -1);
+  for (auto&& c: univ)
+    for (auto&& m: c.clist)
+      if (m.member)
+        own[m.k] = c.id;
+
+  vector<int> top10 = top(univ, 2);
+
+  vector<Community> origin;
+  int m = init_universe(origin, filename);
+
+  ofstream myfile;
+  if (ms) myfile.open (filename + "_struct_ms.csv");
+  else myfile.open (filename + "_struct_std.csv");
+  myfile << "Source,Target,Weight\n";
+  for (int i: top10) {
+    for (auto&& m: univ[i].clist) {
+      for (auto&& n: origin[m.k].clist) {
+        if (own[n.k] == i)
+          myfile << m.k << "," << n.k << ",2.0" << "\n";
+        else
+          myfile << m.k << "," << n.k << ",1.0" << "\n";        
+      }
+    }
+  }
+  myfile.close();
+
+
+  ofstream myfile2, myfile3;
+  if (ms) myfile2.open (filename + "_id_ms.csv");
+  else myfile2.open (filename + "_id_std.csv");
+  myfile2 << "Id,Community\n";
+  for (int i: top10)
+    for (auto&& m: univ[i].clist)
+      myfile2 << m.k << "," << i << "\n";
+  myfile2.close();
+}
+
+
+bool run(string filename, bool ms, int l_scope) {
 /* ========================================================================= */
   vector<double>       arrv;  /* Array of elements A (see paper). If a value
                                  is less than zero, it means that the
@@ -79,8 +138,8 @@ bool run(string filename, int mod, int l_scope) {
 
 #ifdef OUTPUT
   cout << "============================================================\n";
-  if (mod == 1) cout << "CNM-standard\n\n";
-  else cout << "CNM-agglomerative\n\n";
+  if (!ms) cout << "CNM-standard\n\n";
+  else cout << "CNM-multistep\n\n";
 #endif
   m = init_universe(univ, filename);
   init_array(arrv, univ, m);
@@ -88,26 +147,25 @@ bool run(string filename, int mod, int l_scope) {
   double Q = init_Q(arrv);
 
   double total_time, sQ;
-  if (mod == 1)
-    tie(total_time, sQ) = cnm(Q, univ, arrv, heap);
+  if (!ms) tie(total_time, sQ) = cnm(Q, univ, arrv, heap);
   else tie(total_time, sQ) = cnm2(Q, univ, arrv, heap, l_scope);
-  fill(univ, arrv);
+  fill(univ, arrv);  
   shrink_all(univ);
 
   int cms, sngl, maxs, mns;
   tie(cms, sngl, maxs, mns) = stats(univ, arrv);
 
   ofstream myfile;
-  myfile.open ("summary_" + filename, ios::app);
-  if (mod == 1) 
-    myfile << "CNM-standard  ";
-  else 
-    myfile << "CNM-agglomerative  a-factor: " << l_scope << " ";
-
+  myfile.open (filename + "_summary", ios::app);
+  if (!ms) myfile << "CNM-standard  ";
+  else myfile << "CNM-multistep  l_scope: " << l_scope << " ";
   myfile << "maxQ " << sQ << " total_time " << total_time << " ";
   myfile << "#minors " << sngl << " #communities " << cms << " ";
   myfile << "max size: " << maxs << " mean size: " << mns << "\n";
   myfile.close();
+
+  SizeToCSV(filename, ms, univ);
+  StructureToSCV(filename, ms, univ);  
 
 #ifdef OUTPUT
   cout << "# vertices: " << univ.size() << "\n";
@@ -118,7 +176,7 @@ bool run(string filename, int mod, int l_scope) {
   cout << "max size: " << maxs << " mean size: " << mns << "\n";
   cout << "============================================================\n\n";
 #endif  
-  return (univ.size()<600000 && m<3000000);
+  return (univ.size()<800000 && m<3000000);
 }
 
 
@@ -153,7 +211,9 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 
-  bool flag = run(filename, 2, l_scope);
-  // if (flag) run(filename, 1, 0);
+  bool flag = run(filename, true, l_scope);
+#ifdef COMP
+  if (flag) run(filename, false, 0);
+#endif
   exit(0);
 }

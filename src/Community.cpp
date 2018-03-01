@@ -38,13 +38,10 @@ Community::Community(int idx) {
 Community::~Community() {  
   cmax = NULL;
   clist.clear();
-  cmembers.clear();
 }
 
 ostream& operator <<(ostream& os, Community& c) {
-  os << "id: " << c.id << "\nmembers:\n";
-  for (auto it=c.cmembers.begin(); it!=c.cmembers.end(); ++it)
-    os << it->k << " \t" << it->dq << "\n";
+  os << "id: " << c.id << "\n";
   os << "neighbors:\n";
   for (auto it=c.clist.begin(); it!=c.clist.end(); ++it)
     os << it->k << " \t" << it->dq << "\n";  
@@ -52,15 +49,33 @@ ostream& operator <<(ostream& os, Community& c) {
 }
 
 
+unsigned int Community::degree() {
+  unsigned int cnt = 0;
+  for (auto it=clist.begin(); it!=clist.end(); ++it)
+    if (!it->member)
+      cnt++;
+  return cnt;
+}
+
+
+unsigned int Community::members() {
+  unsigned int cnt = 0;
+  for (auto it=clist.begin(); it!=clist.end(); ++it)
+    if (it->member)
+      cnt++;
+  return cnt;
+}
+
+
 bool Community::add(int k, double v) {
   for (auto it=clist.begin(); it!=clist.end(); ++it) {
     if (it->k > k) {
-      clist.emplace(it, k, v);
+      clist.emplace(it, k, v, false);
       return true;
     }
     if (it->k == k) return false;
   }
-  clist.push_back(CNode(k, v));
+  clist.push_back(CNode(k, v, false));
   return true;
 }
 
@@ -100,7 +115,7 @@ void Community::remove(int k) {
 
 void Community::shrink(vector<double>& av) {  
   for (list<CNode>::iterator it=clist.begin(); it!=clist.end();)
-    if (av[it->k] < 0)
+    if ((!it->member) && (av[it->k] < 0))
       it = clist.erase(it);
     else ++it;
 }
@@ -121,21 +136,16 @@ void Community::merge(Community& cm, vector<double>& av) {
 
     if (bx == cm.clist.end()) {
       // update from ax to ay, equation (10c)
-      for (;ax!=clist.end();) {
+      for (;ax!=clist.end(); ++ax)
         if (ax->k == cm.id)
-          ax = clist.erase(ax);
-        else {
+          ax->member = true;
+        else 
           ax->dq -= 2.0*av[cm.id]*av[ax->k];
-          ++ax;
-        }
-      }
       break;
     }
 
-    if (ax->k == cm.id) {
-      ax = clist.erase(ax);
-      continue;
-    }
+    if (ax->k == cm.id)
+      ax->member = true;
 
     if (ax->k < bx->k) {
       // update ax, equation (10c)

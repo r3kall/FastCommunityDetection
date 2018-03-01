@@ -303,18 +303,20 @@ bool convergence(vector<Community>& univ, vector<double>& av, MaxHeap& h) {
 
 void fill(vector<Community>& univ, vector<double>& av) {
   for (int v=0; v<univ.size(); v++) {
-    if (av[v]>0 && univ[v].degree()>0)
-      univ[v].cmembers.emplace(univ[v].cmembers.begin(), v, 0);
-    if (univ[v].members()>1)
-      univ[v].cmembers.sort();
+    if (av[v]>0 && univ[v].size() > 0) {
+      univ[v].clist.emplace_back(v, 0, true);    
+      univ[v].clist.sort();
+    }
   }
 }
 
 
 void shrink_all(vector<Community>& univ) {
   for (auto&& c:univ)
-    c.clist.clear();
-}
+    for (auto it=c.clist.begin(); it!=c.clist.end(); ++it)
+      if (!it->member)
+        it = c.clist.erase(it);
+}   
 
 
 bool validity(Community& a, Community& b, uint64_t stamp, 
@@ -337,14 +339,10 @@ bool validity(Community& a, Community& b, uint64_t stamp,
 
 
 void merge(Community& a, Community& b, vector<double>& av, MaxHeap& h) {
-  // insert new member
-  a.cmembers.emplace_back(a.cmax->k, a.cmax->dq);
   // get timestamp
   uint64_t st = timestamp();
 
-  if (a.degree() >= b.degree()) {
-    // merge members
-    a.cmembers.splice(a.cmembers.end(), b.cmembers);
+  if (a.size() >= b.size()) {    
     // remove self-edge and merge
     b.remove(a.id);
     a.merge(b, av);
@@ -357,7 +355,6 @@ void merge(Community& a, Community& b, vector<double>& av, MaxHeap& h) {
       h.push(a.id, a.cmax->k, a.cmax->dq, st);
     a.stamp = st;
   } else {
-    b.cmembers.splice(b.cmembers.end(), a.cmembers);
     a.remove(b.id);
     b.merge(a, av);    
     av[b.id] += av[a.id];
@@ -445,7 +442,7 @@ pair<double, double> cnm2 (double Q, vector<Community>& univ,
   vector<pair<int,int>> candidates;
 
   clock_t begin_total = clock();
-  do {
+  //do {
     while (!heap.empty() || candidates.size()>0) {
       l=0;
       while (!heap.empty() && l<l_scope) {
@@ -490,7 +487,9 @@ pair<double, double> cnm2 (double Q, vector<Community>& univ,
       candidates.clear();  // remove all candidates
     }  // end first while loop
     l_scope = 4;
-  } while (!convergence(univ, av, heap));
+  //} while (!convergence(univ, av, heap));
+  while (!convergence(univ, av, heap))
+    tie(ignore, sQ) = cnm(sQ, univ, av, heap);
 
   clock_t end_total = clock();
   double elapsed_total = double(end_total - begin_total) / CLOCKS_PER_SEC;
