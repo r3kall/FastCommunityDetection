@@ -11,6 +11,9 @@ default: $(TARGET)
 clean:
 	rm -rf *~ *.o $(TARGET)
 
+clean-all:
+	rm -rf *~ *.o $(TARGET) *.csv *.tsv summary_*
+
 fcd: main.cpp fcd.o Community.o
 	$(CXX) $(CFLAGS) -o fcd main.cpp fcd.o Community.o $(LIBS)
 

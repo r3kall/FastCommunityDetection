@@ -57,71 +57,119 @@ tuple<int,int,int,int> stats (vector<Community>& univ, vector<double> av) {
 }
 
 
-vector<int> top(vector<Community>& univ, int s) {
-  vector<int> res;  
-  vector<pair<int,int>> order;
-  for (auto&& c: univ)
-    if (c.size() > 0)
-      order.push_back(make_pair(c.size(), c.id));
-
-  sort(order.begin(), order.end());
-  reverse(order.begin(), order.end());
-  for (int i=0; i<s; i++)
-    res.push_back(order[i].second);
-
-  return res;
-}
-
-
-void SizeToCSV(string filename, bool ms, vector<Community>& univ) {
-  ofstream myfile;
-  if (ms) myfile.open (filename + "_info_ms.csv");
-  else myfile.open (filename + "_info_std.csv");
-  myfile << "id,size\n";
-  for (auto&& c: univ)
-    if (c.size() > 0)
-      myfile << c.id << "," << c.members() << "\n";
-  myfile.close();
-}
-
-
-void StructureToSCV(string filename, bool ms, vector<Community>& univ) {
+vector<int> ownership(vector<Community>& univ) {
   vector<int> own(univ.size(), -1);
   for (auto&& c: univ)
     for (auto&& m: c.clist)
       if (m.member)
         own[m.k] = c.id;
+  return own;
+}
 
-  vector<int> top10 = top(univ, 2);
 
-  vector<Community> origin;
-  int m = init_universe(origin, filename);
+vector<int> selection(vector<Community>& univ, int t, int m) {
+  vector<int> res;  
+  vector<pair<int,int>> order;
 
-  ofstream myfile;
-  if (ms) myfile.open (filename + "_struct_ms.csv");
-  else myfile.open (filename + "_struct_std.csv");
-  myfile << "Source,Target,Weight\n";
-  for (int i: top10) {
-    for (auto&& m: univ[i].clist) {
-      for (auto&& n: origin[m.k].clist) {
-        if (own[n.k] == i)
-          myfile << m.k << "," << n.k << ",2.0" << "\n";
-        else
-          myfile << m.k << "," << n.k << ",1.0" << "\n";        
-      }
+  for (auto&& c: univ)
+    if (c.size() > 0)
+      order.push_back(make_pair(c.members(), c.id));
+
+  sort(order.begin(), order.end());
+  reverse(order.begin(), order.end());
+
+  int cnt = 0;
+  for (int i=0; i<order.size(); i++) {
+    if (cnt >= t) break;
+    if (order[i].first >= 10 && order[i].first <= 30000) {
+      res.push_back(order[i].second);
+      cnt++;
     }
   }
+
+  vector<int> mid;
+  vector<int> own = ownership(univ);
+
+  for (int i: res)
+    for (auto&& v: univ[i].clist)
+      if (!v.member && own[v.k] >= 0)
+        if (find(res.begin(), res.end(), own[v.k]) == res.end())
+          if (univ[own[v.k]].members() >= 3 && univ[own[v.k]].members() <= 500)
+            if (find(mid.begin(), mid.end(), own[v.k]) == mid.end())
+              mid.push_back(own[v.k]);
+
+  random_shuffle(mid.begin(), mid.end());
+  for (int i=0; i<m; i++)
+    res.push_back(mid[i]);
+
+  return res;
+}
+
+
+void StructureToTSV(string filename, bool ms, 
+                    vector<Community>& univ, vector<int>& selection) {
+  vector<int> own = ownership(univ);
+  vector<bool> visited(univ.size(), false);
+  vector<Community> origin;
+  int m = init_universe(origin, filename);
+  list<CNode>::iterator it;
+  list<int> queue;
+  int front;
+
+  ofstream myfile;
+  if (ms) myfile.open (filename + "_struct_ms.tsv");
+  else myfile.open (filename + "_struct_std.tsv");
+  myfile << "Source\tTarget\n";
+
+  for (int i: selection) {
+    front = univ[i].clist.front().k;
+    visited[front] = true;
+    queue.push_back(front);
+
+    while (!queue.empty()) {
+      front = queue.front();
+      queue.pop_front();
+      for (it=origin[front].clist.begin(); it!=origin[front].clist.end(); ++it) {
+        if (find(selection.begin(), selection.end(), own[it->k]) != selection.end()) {
+          if (!visited[it->k]) {
+            myfile << front << "\t" << it->k << "\n";
+            visited[it->k] = true;
+            queue.push_back(it->k);
+          }
+        }
+      }
+    }
+    for (int b=0; b<visited.size(); b++)
+      visited[b] = false;
+  }
   myfile.close();
+}
 
 
-  ofstream myfile2, myfile3;
-  if (ms) myfile2.open (filename + "_id_ms.csv");
-  else myfile2.open (filename + "_id_std.csv");
-  myfile2 << "Id,Community\n";
-  for (int i: top10)
-    for (auto&& m: univ[i].clist)
-      myfile2 << m.k << "," << i << "\n";
-  myfile2.close();
+void SizeToTSV(string filename, bool ms, vector<Community>& univ) {
+  ofstream myfile;
+  if (ms) myfile.open (filename + "_info_ms.tsv");
+  else myfile.open (filename + "_info_std.tsv");
+  myfile << "Id\tSize\n";
+  for (auto&& c: univ)
+    if (c.size() > 0)
+      myfile << c.id << "\t" << c.members() << "\n";
+  myfile.close();
+}
+
+
+void CommunityToTSV(string filename, bool ms, 
+                    vector<Community>& univ, vector<int> selection) {
+  ofstream ids;
+  if (ms) ids.open (filename + "_id_ms.tsv");
+  else ids.open (filename + "_id_std.tsv");
+  ids << "Id\tCommunity\n";
+  for (int i=0; i<selection.size(); i++)
+    for (auto it=univ[selection[i]].clist.begin(); 
+        it!=univ[selection[i]].clist.end(); ++it)
+      if (it->member)
+        ids << it->k << "\t" << selection[i] << "\n";
+  ids.close();
 }
 
 
@@ -149,6 +197,7 @@ bool run(string filename, bool ms, int l_scope) {
   double total_time, sQ;
   if (!ms) tie(total_time, sQ) = cnm(Q, univ, arrv, heap);
   else tie(total_time, sQ) = cnm2(Q, univ, arrv, heap, l_scope);
+  vector<int> sel = selection(univ, 2, 10);
   fill(univ, arrv);  
   shrink_all(univ);
 
@@ -156,7 +205,7 @@ bool run(string filename, bool ms, int l_scope) {
   tie(cms, sngl, maxs, mns) = stats(univ, arrv);
 
   ofstream myfile;
-  myfile.open (filename + "_summary", ios::app);
+  myfile.open ("summary_" + filename, ios::app);
   if (!ms) myfile << "CNM-standard  ";
   else myfile << "CNM-multistep  l_scope: " << l_scope << " ";
   myfile << "maxQ " << sQ << " total_time " << total_time << " ";
@@ -164,8 +213,9 @@ bool run(string filename, bool ms, int l_scope) {
   myfile << "max size: " << maxs << " mean size: " << mns << "\n";
   myfile.close();
 
-  SizeToCSV(filename, ms, univ);
-  StructureToSCV(filename, ms, univ);  
+  SizeToTSV(filename, ms, univ);
+  CommunityToTSV(filename, ms, univ, sel);
+  StructureToTSV(filename, ms, univ, sel);
 
 #ifdef OUTPUT
   cout << "# vertices: " << univ.size() << "\n";

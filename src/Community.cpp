@@ -67,15 +67,23 @@ unsigned int Community::members() {
 }
 
 
-bool Community::add(int k, double v) {
+bool Community::contains(int k) {
+  for (auto it=clist.begin(); it!=clist.end(); ++it)
+    if (it->k == k)
+      return true;
+  return false;
+}
+
+
+bool Community::add(int k, double v, bool f) {
   for (auto it=clist.begin(); it!=clist.end(); ++it) {
     if (it->k > k) {
-      clist.emplace(it, k, v, false);
+      clist.emplace(it, k, v, f);
       return true;
     }
     if (it->k == k) return false;
   }
-  clist.push_back(CNode(k, v, false));
+  clist.push_back(CNode(k, v, f));
   return true;
 }
 
@@ -94,7 +102,7 @@ bool Community::scan_max(vector<double>& av) {
   cmax = NULL;
   double bestdq = 0;
   for (list<CNode>::iterator it=clist.begin(); it!=clist.end(); ++it) {
-    if ((av[it->k] > 0) && (it->dq > bestdq)) {
+    if (!(it->member) && (av[it->k] > 0) && (it->dq > bestdq)) {
         bestdq = it->dq;
         cmax = &(*it);  
     }
@@ -103,13 +111,14 @@ bool Community::scan_max(vector<double>& av) {
 }
 
 
-void Community::remove(int k) {
+bool Community::remove(int k) {
   for (list<CNode>::iterator it=clist.begin(); it!=clist.end(); ++it) {
     if (it->k == k) {
-      clist.erase(it);
-      return;        
+      it = clist.erase(it);
+      return true;        
     }
-  }  
+  }
+  return false;
 }
 
 
@@ -158,8 +167,12 @@ void Community::merge(Community& cm, vector<double>& av) {
       clist.splice(ax, cm.clist, bx);
       bx = cm.clist.begin();
     } else {  // equals
-      // update ax, equation (10a)
-      ax->dq += bx->dq;
+      // check if members
+      // or update ax, equation (10a)
+      if (bx->member)
+        ax->member = true;
+      else
+        ax->dq += bx->dq;      
       ++ax;
       // remove equal node from b
       cm.clist.pop_front();

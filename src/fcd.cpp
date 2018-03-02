@@ -115,10 +115,10 @@ int read_data_set (string filename, vector<Community>& univ) {
     ifstream myfile(filename);
     if (myfile.is_open()) {
       while (myfile >> i >> j) {
-        if (i == j)
-          continue;
-        univ[i].add(j, 0);
-        univ[j].add(i, 0);
+        if (i != j) {
+          univ[i].add(j, 0, false);
+          univ[j].add(i, 0, false);
+        }
       }
       myfile.close();
     } else {
@@ -170,7 +170,7 @@ int read_data_set (string filename, vector<Community>& univ) {
       getline(prefile, line);
       iss = istringstream(line);
       while (iss >> y)
-        univ[x].add(y,0);  // add neighbors
+        univ[x].add(y,0,false);  // add neighbors
     }
     prefile.close();
   }
@@ -302,20 +302,19 @@ bool convergence(vector<Community>& univ, vector<double>& av, MaxHeap& h) {
 
 
 void fill(vector<Community>& univ, vector<double>& av) {
-  for (int v=0; v<univ.size(); v++) {
-    if (av[v]>0 && univ[v].size() > 0) {
-      univ[v].clist.emplace_back(v, 0, true);    
-      univ[v].clist.sort();
-    }
-  }
+  for (int v=0; v<univ.size(); v++)
+    if (univ[v].size() > 0)
+      univ[v].clist.emplace_back(v, 0, true);
 }
 
 
 void shrink_all(vector<Community>& univ) {
   for (auto&& c:univ)
-    for (auto it=c.clist.begin(); it!=c.clist.end(); ++it)
+    for (auto it=c.clist.begin(); it!=c.clist.end();) {
       if (!it->member)
         it = c.clist.erase(it);
+      else ++it;
+    }
 }   
 
 
@@ -342,7 +341,7 @@ void merge(Community& a, Community& b, vector<double>& av, MaxHeap& h) {
   // get timestamp
   uint64_t st = timestamp();
 
-  if (a.size() >= b.size()) {    
+  if (a.size() >= b.size()) {
     // remove self-edge and merge
     b.remove(a.id);
     a.merge(b, av);
@@ -354,9 +353,11 @@ void merge(Community& a, Community& b, vector<double>& av, MaxHeap& h) {
     if (a.scan_max(av))
       h.push(a.id, a.cmax->k, a.cmax->dq, st);
     a.stamp = st;
-  } else {
+  
+  } else {    
     a.remove(b.id);
-    b.merge(a, av);    
+    b.merge(a, av);
+    b.add(a.id,0,true); 
     av[b.id] += av[a.id];
     av[a.id] = -(b.id);
     a.cmax = NULL;

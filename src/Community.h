@@ -1,3 +1,4 @@
+
 /* ============================================================================
  * Community.h
  *
@@ -37,7 +38,8 @@ typedef struct node {
 
   node(int a, double b, bool c): k(a), dq(b), member(c) {}
   ~node() {}
-  bool operator <(const node& n) const {return k<n.k;}
+  inline bool operator <(const node& n) const {return k<n.k;}
+  inline bool operator ==(const node& n) const {return k==n.k;}
 } CNode;  // 16B
 
 /* ============================================================================
@@ -66,10 +68,11 @@ public:
   unsigned int degree();
   unsigned int members();
 
-  bool add(int,double);                 // Add node in community
+  bool contains(int);
+  bool add(int,double,bool);            // Add node in community
   bool scan_max(std::vector<double>&);  // Find member with maximum dQ
+  bool remove(int);                     // Remove specific node
 
-  void remove(int);                             // Remove specific node
   void shrink(std::vector<double>&);            // Remove obsolete nodes
   void merge(Community&,std::vector<double>&);  // Merge two communities
 
