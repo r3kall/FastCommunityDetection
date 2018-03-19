@@ -68,6 +68,9 @@ vector<int> ownership(vector<Community>& univ) {
 
 
 vector<int> selection(vector<Community>& univ, int t, int m) {
+  int lowerbound = 64;
+  int upperbound = 16384;//32768;
+  int midbound = 1024;
   vector<int> res;  
   vector<pair<int,int>> order;
 
@@ -81,7 +84,7 @@ vector<int> selection(vector<Community>& univ, int t, int m) {
   int cnt = 0;
   for (int i=0; i<order.size(); i++) {
     if (cnt >= t) break;
-    if (order[i].first >= 10 && order[i].first <= 30000) {
+    if (order[i].first >= lowerbound && order[i].first <= upperbound) {
       res.push_back(order[i].second);
       cnt++;
     }
@@ -94,7 +97,7 @@ vector<int> selection(vector<Community>& univ, int t, int m) {
     for (auto&& v: univ[i].clist)
       if (!v.member && own[v.k] >= 0)
         if (find(res.begin(), res.end(), own[v.k]) == res.end())
-          if (univ[own[v.k]].members() >= 3 && univ[own[v.k]].members() <= 500)
+          if (univ[own[v.k]].members() >= lowerbound && univ[own[v.k]].members() <= midbound)
             if (find(mid.begin(), mid.end(), own[v.k]) == mid.end())
               mid.push_back(own[v.k]);
 
@@ -130,7 +133,7 @@ void StructureToTSV(string filename, bool ms,
       front = queue.front();
       queue.pop_front();
       for (it=origin[front].clist.begin(); it!=origin[front].clist.end(); ++it) {
-        if (find(selection.begin(), selection.end(), own[it->k]) != selection.end()) {
+        if (find(selection.begin(),selection.end(),own[it->k]) != selection.end()) {
           if (!visited[it->k]) {
             myfile << front << "\t" << it->k << "\n";
             visited[it->k] = true;
@@ -138,7 +141,7 @@ void StructureToTSV(string filename, bool ms,
           }
         }
       }
-    }
+    }    
     for (int b=0; b<visited.size(); b++)
       visited[b] = false;
   }
@@ -197,7 +200,7 @@ bool run(string filename, bool ms, int l_scope) {
   double total_time, sQ;
   if (!ms) tie(total_time, sQ) = cnm(Q, univ, arrv, heap);
   else tie(total_time, sQ) = cnm2(Q, univ, arrv, heap, l_scope);
-  vector<int> sel = selection(univ, 2, 10);
+  vector<int> sel = selection(univ, 4, 6);
   fill(univ, arrv);  
   shrink_all(univ);
 
@@ -213,9 +216,17 @@ bool run(string filename, bool ms, int l_scope) {
   myfile << "max size: " << maxs << " mean size: " << mns << "\n";
   myfile.close();
 
+#ifdef DEBUG
+  clock_t begin = clock();
+#endif
   SizeToTSV(filename, ms, univ);
   CommunityToTSV(filename, ms, univ, sel);
   StructureToTSV(filename, ms, univ, sel);
+#ifdef DEBUG 
+  clock_t end = clock();
+  double elapsed = double(end - begin) / CLOCKS_PER_SEC;
+  cout << "Time to generate tsv files: " << elapsed << " seconds" << endl;
+#endif
 
 #ifdef OUTPUT
   cout << "# vertices: " << univ.size() << "\n";
