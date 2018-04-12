@@ -396,16 +396,12 @@ pair<double, double> cnm (double Q, vector<Community>& univ,
       merge(univ[x], univ[y], av, heap);
 
 #ifdef DEBUG
-      end = clock();
-      elapsed = double(end - begin) / CLOCKS_PER_SEC;
-      // cout << "x: " << x << " y: " << y << " time: " << elapsed << endl;
       if (iter%100000 == 0) {
         cout<< "iter: "<< iter;
         cout<< "  time elapsed: "<< double(clock()-begin_total)/CLOCKS_PER_SEC;
         cout<< "  partial Q: "<< sQ<< "\n";         
       }
 #endif
-
     }  // end first while loop    
   } while (!convergence(univ, av, heap));
 
@@ -443,52 +439,47 @@ pair<double, double> cnm2 (double Q, vector<Community>& univ,
   vector<pair<int,int>> candidates;
 
   clock_t begin_total = clock();
-  //do {
-    while (!heap.empty() || candidates.size()>0) {
-      l=0;
-      while (!heap.empty() && l<l_scope) {
-        heap.pop(x, y, stamp);           
-        if (validity(univ[x], univ[y], stamp, av, heap)) {
-          candidates.push_back(make_pair(x,y));
-          l++;
-        }
-      }  // end second while loop
+  while (!heap.empty() || candidates.size()>0) {
+    l=0;
+    while (!heap.empty() && l<l_scope) {
+      heap.pop(x, y, stamp);           
+      if (validity(univ[x], univ[y], stamp, av, heap)) {
+        candidates.push_back(make_pair(x,y));
+        l++;
+      }
+    }  // end second while loop
 
-      for (int i=0; i<candidates.size(); i++) {
-        tie(x,y) = candidates[i];
-        if (touched[x] || touched[y]) continue;
+    for (int i=0; i<candidates.size(); i++) {
+      tie(x,y) = candidates[i];
+      if (touched[x] || touched[y]) continue;
 
-        touched[x] = true;
-        touched[y] = true;
-        
-  #ifdef DEBUG
-        iter++;
-        begin = clock();
-  #endif  
-        sQ += univ[x].cmax->dq;
-        merge(univ[x], univ[y], av, heap);
-                    
-  #ifdef DEBUG
-        end = clock();
-        elapsed = double(end - begin) / CLOCKS_PER_SEC;
-        // cout << "x: " << x << " y: " << y << " time: " << elapsed << endl;
-        if (iter%100000 == 0) {
-          cout<< "iter: "<< iter;
-          cout<< "  time elapsed: "<< double(clock()-begin_total)/CLOCKS_PER_SEC;
-          cout<< "  partial Q: "<< sQ<< "\n";      
-        }
-  #endif
-      }  // end first for loop
+      touched[x] = true;
+      touched[y] = true;
+      
+#ifdef DEBUG
+      iter++;
+      begin = clock();
+#endif  
+      sQ += univ[x].cmax->dq;
+      merge(univ[x], univ[y], av, heap);
 
-      for (int i=0; i<candidates.size(); i++) {
-        tie(x,y) = candidates[i];
-        touched[x] = false;
-        touched[y] = false;
-      }  // end second for loop
-      candidates.clear();  // remove all candidates
-    }  // end first while loop
-    l_scope = 4;
-  //} while (!convergence(univ, av, heap));
+#ifdef DEBUG
+      if (iter%100000 == 0) {
+        cout<< "iter: "<< iter;
+        cout<< "  time elapsed: "<< double(clock()-begin_total)/CLOCKS_PER_SEC;
+        cout<< "  partial Q: "<< sQ<< "\n";      
+      }
+#endif
+    }  // end first for loop
+
+    for (int i=0; i<candidates.size(); i++) {
+      tie(x,y) = candidates[i];
+      touched[x] = false;
+      touched[y] = false;
+    }  // end second for loop
+    candidates.clear();  // remove all candidates
+  }  // end first while loop
+
   while (!convergence(univ, av, heap))
     tie(ignore, sQ) = cnm(sQ, univ, av, heap);
 

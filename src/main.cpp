@@ -31,7 +31,7 @@
 using namespace std;
 
 #define OUTPUT
-//#define COMP
+#define COMP
 
 tuple<int,int,int,int> stats (vector<Community>& univ, vector<double> av) {
   int n_of_singleton   = 0;
@@ -68,9 +68,9 @@ vector<int> ownership(vector<Community>& univ) {
 
 
 vector<int> selection(vector<Community>& univ, int t, int m) {
-  int lowerbound = 64;
-  int upperbound = 16384;//32768;
-  int midbound = 1024;
+  int lowerbound = 256;
+  int upperbound = 32768;
+  int midbound = 2048;
   vector<int> res;  
   vector<pair<int,int>> order;
 
@@ -93,13 +93,22 @@ vector<int> selection(vector<Community>& univ, int t, int m) {
   vector<int> mid;
   vector<int> own = ownership(univ);
 
-  for (int i: res)
-    for (auto&& v: univ[i].clist)
-      if (!v.member && own[v.k] >= 0)
-        if (find(res.begin(), res.end(), own[v.k]) == res.end())
-          if (univ[own[v.k]].members() >= lowerbound && univ[own[v.k]].members() <= midbound)
-            if (find(mid.begin(), mid.end(), own[v.k]) == mid.end())
+  for (int i: res) {
+    cnt = 0;
+    for (auto&& v: univ[i].clist) {
+      if (cnt >= 64) break;
+      if (!v.member && own[v.k] >= 0) {
+        if (find(res.begin(), res.end(), own[v.k]) == res.end()) {
+          if (univ[own[v.k]].members() >= lowerbound && univ[own[v.k]].members() <= midbound) {
+            if (find(mid.begin(), mid.end(), own[v.k]) == mid.end()) {
               mid.push_back(own[v.k]);
+              cnt++;
+            }
+          }
+        }
+      }
+    }
+  }
 
   random_shuffle(mid.begin(), mid.end());
   for (int i=0; i<m; i++)
@@ -200,9 +209,18 @@ bool run(string filename, bool ms, int l_scope) {
   double total_time, sQ;
   if (!ms) tie(total_time, sQ) = cnm(Q, univ, arrv, heap);
   else tie(total_time, sQ) = cnm2(Q, univ, arrv, heap, l_scope);
-  vector<int> sel = selection(univ, 4, 6);
-  fill(univ, arrv);  
+
+#ifdef DEBUG
+  clock_t post_begin = clock();
+#endif
+  vector<int> sel = selection(univ, 3, 7);
+  fill(univ, arrv);
   shrink_all(univ);
+#ifdef DEBUG 
+  clock_t post_end = clock();
+  double post_elapsed = double(post_end - post_begin) / CLOCKS_PER_SEC;
+  cout << "Time to post-processing: " << post_elapsed << " seconds" << endl;
+#endif
 
   int cms, sngl, maxs, mns;
   tie(cms, sngl, maxs, mns) = stats(univ, arrv);
@@ -237,7 +255,7 @@ bool run(string filename, bool ms, int l_scope) {
   cout << "max size: " << maxs << " mean size: " << mns << "\n";
   cout << "============================================================\n\n";
 #endif  
-  return (univ.size()<800000 && m<3000000);
+  return (univ.size()<600000 && m<3000000);
 }
 
 
